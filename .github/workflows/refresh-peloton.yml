@@ -67,7 +67,7 @@ jobs:
 
   deploy:
     needs: refresh
-    if: always() && github.ref == 'refs/heads/main' && (needs.refresh.result == 'success' || needs.refresh.result == 'skipped')
+    if: always() && github.ref == 'refs/heads/main' && (needs.refresh.result == 'success' || needs.refresh.result == 'skipped' || needs.refresh.result == 'failure')
     name: Publish and verify report
     runs-on: ubuntu-latest
     timeout-minutes: 20

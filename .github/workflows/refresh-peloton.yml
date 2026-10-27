@@ -2,61 +2,49 @@ name: Refresh Peloton data
 
 on:
   schedule:
-    # GitHub runs schedules in UTC. 07:00 UTC = midnight Mountain Standard Time
-    # (Nov-Mar) and 1:00 a.m. during daylight time. GitHub can start scheduled runs late.
     - cron: "0 7 * * *"
-  workflow_dispatch:          # "Run workflow" button for an on-demand refresh
-  push:
-    branches: [main]
-    paths: ["docs/index.html", "collector/**", ".github/workflows/**"]
+  workflow_dispatch:
 
 permissions:
-  contents: write             # commit the refreshed data file
-  pages: write                # publish the site
-  id-token: write
+  contents: read
 
 concurrency:
-  group: peloton-refresh
+  group: peloton-data-refresh
   cancel-in-progress: false
 
 jobs:
   refresh:
+    name: Fetch and commit workout data
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+    timeout-minutes: 20
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@v5
+      - name: Install Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
-      - name: Install requests
-        run: pip install "requests==2.32.3"
+      - name: Install collector dependency
+        run: python -m pip install --disable-pip-version-check "requests==2.32.3"
 
       - name: Fetch from Peloton
         env:
           PELOTON_TOKEN: ${{ secrets.PELOTON_TOKEN }}
         run: python collector/peloton_collector.py --out docs/data/peloton_data.json
 
-      - name: Commit the new data
+      - name: Commit updated data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/data/peloton_data.json
+
           if git diff --cached --quiet; then
-            echo "No change in data"
+            echo "No change in Peloton data"
           else
             git commit -m "Peloton data $(date -u +%F)"
-            git push
+            git push origin HEAD:main
           fi
-
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
-
-      - id: deploy
-        uses: actions/deploy-pages@v4

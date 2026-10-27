@@ -1,0 +1,59 @@
+name: Validate Peloton repository
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Install Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Validate Python sources
+        run: python -m compileall -q collector
+
+      - name: Validate report and data
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          html = Path('docs/index.html').read_text(encoding='utf-8')
+          if 'peloton_data.json' not in html or 'createApp' not in html:
+              raise SystemExit('report does not contain the expected application wiring')
+          data = json.loads(Path('docs/data/peloton_data.json').read_text(encoding='utf-8'))
+          if data.get('source') != 'peloton-api' or not isinstance(data.get('rows'), list):
+              raise SystemExit('data file is missing the expected Peloton schema')
+          print(f"validated {len(data['rows'])} workout rows")
+          PY
+
+      - name: Check for accidental secrets
+        shell: bash
+        run: |
+          if rg -n --hidden --glob '!.git/**' --glob '!docs/data/peloton_data.json' \
+            '(Authorization: Bearer|PELOTON_TOKEN=.{8,}|-----BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY-----)' .; then
+            echo '::error::Possible credential material found in tracked files.'
+            exit 1
+          fi
+
+      - name: Check patch whitespace
+        run: git diff --check

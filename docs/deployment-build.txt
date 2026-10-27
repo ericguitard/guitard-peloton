@@ -1,0 +1,1 @@
+runtime-only Vue build enabled by the hardened deployment workflow

@@ -7,7 +7,14 @@ const property = "    template: \"";
 const start = source.indexOf(property);
 if (start < 0) throw new Error("Vue template property was not found");
 const valueStart = start + property.length;
-const valueEnd = source.indexOf(String.fromCharCode(34) + "," + String.fromCharCode(10) + "    setup()", valueStart);
+const marker = String.fromCharCode(34) + ",";
+const lfMarker = marker + String.fromCharCode(10) + "    setup()";
+const crlfMarker = marker + String.fromCharCode(13) + String.fromCharCode(10) + "    setup()";
+const valueEnd = (() => {
+  const lfEnd = source.indexOf(lfMarker, valueStart);
+  if (lfEnd >= 0) return lfEnd;
+  return source.indexOf(crlfMarker, valueStart);
+})();
 if (valueEnd < 0) throw new Error("Vue template terminator was not found");
 const template = JSON.parse(String.fromCharCode(34) + source.slice(valueStart, valueEnd) + String.fromCharCode(34));
 const compiled = compile(template, { mode: "function", prefixIdentifiers: false });

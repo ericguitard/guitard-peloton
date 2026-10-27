@@ -10,13 +10,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: validate-${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
@@ -31,12 +31,22 @@ jobs:
       - name: Validate Python sources
         run: python -m compileall -q collector
 
+      - name: Install Vue compiler
+        run: npm install --no-save --ignore-scripts @vue/compiler-dom@3.4.21
+
+      - name: Build runtime-only report
+        run: |
+          mkdir -p work
+          node scripts/compile-report.mjs docs/index.html work/index.html
+          if grep -q "unsafe-eval" work/index.html; then exit 1; fi
+          if grep -q "vue.global.prod.js" work/index.html; then exit 1; fi
+          grep -q "vue.runtime.global.prod.js" work/index.html
+
       - name: Validate report and data
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-
           html = Path('docs/index.html').read_text(encoding='utf-8')
           if 'peloton_data.json' not in html or 'createApp' not in html:
               raise SystemExit('report does not contain the expected application wiring')

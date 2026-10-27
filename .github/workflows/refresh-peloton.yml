@@ -1,0 +1,62 @@
+name: Refresh Peloton data
+
+on:
+  schedule:
+    # GitHub runs schedules in UTC. 07:00 UTC = midnight Mountain Standard Time
+    # (Nov-Mar) and 1:00 a.m. during daylight time. GitHub can start scheduled runs late.
+    - cron: "0 7 * * *"
+  workflow_dispatch:          # "Run workflow" button for an on-demand refresh
+  push:
+    branches: [main]
+    paths: ["docs/index.html", "collector/**", ".github/workflows/**"]
+
+permissions:
+  contents: write             # commit the refreshed data file
+  pages: write                # publish the site
+  id-token: write
+
+concurrency:
+  group: peloton-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install requests
+        run: pip install "requests==2.32.3"
+
+      - name: Fetch from Peloton
+        env:
+          PELOTON_TOKEN: ${{ secrets.PELOTON_TOKEN }}
+        run: python collector/peloton_collector.py --out docs/data/peloton_data.json
+
+      - name: Commit the new data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/data/peloton_data.json
+          if git diff --cached --quiet; then
+            echo "No change in data"
+          else
+            git commit -m "Peloton data $(date -u +%F)"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

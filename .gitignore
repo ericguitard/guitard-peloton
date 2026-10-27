@@ -1,0 +1,4 @@
+# never commit your Peloton token
+peloton_token.txt
+*.log
+__pycache__/

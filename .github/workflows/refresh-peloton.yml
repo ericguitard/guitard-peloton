@@ -139,9 +139,11 @@ jobs:
               with urllib.request.urlopen(request, timeout=30) as response:
                   result = json.load(response)
           except urllib.error.HTTPError as error:
-              raise SystemExit("Cloudflare cache purge failed (HTTP {})".format(error.code))
+              print("::warning::Cloudflare cache purge failed (HTTP {}); continuing because the Pages deployment already succeeded.".format(error.code))
+              raise SystemExit(0)
           if result.get("success") is not True:
-              raise SystemExit("Cloudflare rejected the cache purge request")
+              print("::warning::Cloudflare rejected the cache purge request; continuing because the Pages deployment already succeeded.")
+              raise SystemExit(0)
           print("Purged the report page and Peloton data JSON from Cloudflare.")
           PY
 
@@ -176,4 +178,5 @@ jobs:
                       raise SystemExit("Live site verification failed: {}".format(error))
                   time.sleep(10)
           PY
+
 

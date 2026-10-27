@@ -24,6 +24,6 @@ const runtime = "vendor/vue.global.prod.js";
 const runtimeOnly = "vendor/vue.runtime.global.prod.js";
 const runtimeSource = fs.readFileSync(new URL("../docs/vendor/vue.runtime.global.prod.js", import.meta.url), "utf8");
 const runtimeTag = "<script>\n" + runtimeSource + "\n</script>";
-const compiled = result.replace(runtime, runtimeOnly).replace("<script src=\"" + runtimeOnly + "\"></script>", runtimeTag);
-fs.writeFileSync(output, compiled);
+const inlineCompiled = result.replace(runtime, runtimeOnly).replace("<script src=\"" + runtimeOnly + "\"></script>", runtimeTag);
+fs.writeFileSync(output, inlineCompiled);
 

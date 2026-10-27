@@ -2,61 +2,163 @@ name: Refresh Peloton data
 
 on:
   schedule:
-    # GitHub runs schedules in UTC. 07:00 UTC = midnight Mountain Standard Time
-    # (Nov-Mar) and 1:00 a.m. during daylight time. GitHub can start scheduled runs late.
     - cron: "0 7 * * *"
-  workflow_dispatch:          # "Run workflow" button for an on-demand refresh
+  workflow_dispatch:
   push:
     branches: [main]
-    paths: ["docs/index.html", "collector/**", ".github/workflows/**"]
+    paths: ["docs/**"]
 
 permissions:
-  contents: write             # commit the refreshed data file
-  pages: write                # publish the site
-  id-token: write
+  contents: read
 
 concurrency:
-  group: peloton-refresh
+  group: peloton-production
   cancel-in-progress: false
 
 jobs:
   refresh:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    name: Fetch and commit workout data
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    outputs:
+      data_commit_sha: ${{ steps.commit.outputs.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@v5
+      - name: Install Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
-      - name: Install requests
-        run: pip install "requests==2.32.3"
+      - name: Install collector dependency
+        run: python -m pip install --disable-pip-version-check "requests==2.34.2"
 
       - name: Fetch from Peloton
         env:
           PELOTON_TOKEN: ${{ secrets.PELOTON_TOKEN }}
         run: python collector/peloton_collector.py --out docs/data/peloton_data.json
 
-      - name: Commit the new data
+      - name: Commit updated data
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/data/peloton_data.json
           if git diff --cached --quiet; then
-            echo "No change in data"
+            echo "No change in Peloton data"
           else
             git commit -m "Peloton data $(date -u +%F)"
-            git push
+            git push origin HEAD:main
           fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/configure-pages@v5
+  deploy:
+    needs: refresh
+    if: always() && github.ref == 'refs/heads/main' && (needs.refresh.result == 'success' || needs.refresh.result == 'skipped')
+    name: Publish and verify report
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      pages: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      SITE_URL: https://peloton.guitard.ca/
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+    steps:
+      - name: Check out deployment contents
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.refresh.outputs.data_commit_sha || github.sha }}
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: docs
+          include-hidden-files: true
 
-      - id: deploy
-        uses: actions/deploy-pages@v4
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+      - name: Purge Cloudflare page and data cache
+        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ZONE_ID != ''
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+          from urllib.parse import urljoin
+
+          site = os.environ["SITE_URL"]
+          urls = [site, urljoin(site, "data/peloton_data.json")]
+          endpoint = "https://api.cloudflare.com/client/v4/zones/{}/purge_cache".format(
+              os.environ["CLOUDFLARE_ZONE_ID"]
+          )
+          request = urllib.request.Request(
+              endpoint,
+              data=json.dumps({"files": urls}).encode(),
+              headers={
+                  "Authorization": "Bearer " + os.environ["CLOUDFLARE_API_TOKEN"],
+                  "Content-Type": "application/json",
+              },
+              method="POST",
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  result = json.load(response)
+          except urllib.error.HTTPError as error:
+              raise SystemExit("Cloudflare cache purge failed (HTTP {})".format(error.code))
+          if result.get("success") is not True:
+              raise SystemExit("Cloudflare rejected the cache purge request")
+          print("Purged the report page and Peloton data JSON from Cloudflare.")
+          PY
+
+      - name: Verify live report and data
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.request
+          from urllib.parse import urljoin, urlsplit
+
+          site = os.environ["SITE_URL"]
+          parsed = urlsplit(site)
+          if parsed.scheme != "https" or not parsed.hostname:
+              raise SystemExit("SITE_URL must be an https URL")
+
+          for attempt in range(1, 7):
+              try:
+                  for path in ("", "data/peloton_data.json"):
+                      request = urllib.request.Request(
+                          urljoin(site, path),
+                          headers={"Cache-Control": "no-cache"},
+                      )
+                      with urllib.request.urlopen(request, timeout=20) as response:
+                          body = response.read()
+                      if path.endswith(".json"):
+                          data = json.loads(body)
+                          if data.get("source") != "peloton-api" or not isinstance(data.get("rows"), list):
+                              raise RuntimeError("Peloton data JSON is missing expected fields")
+                  print("Live report and Peloton data returned valid responses.")
+                  break
+              except (OSError, ValueError, RuntimeError) as error:
+                  if attempt == 6:
+                      raise SystemExit("Live site verification failed: {}".format(error))
+                  time.sleep(10)
+          PY
+
+      - name: Note skipped Cloudflare purge
+        if: env.CLOUDFLARE_API_TOKEN == '' || env.CLOUDFLARE_ZONE_ID == ''
+        run: echo "Cloudflare purge skipped; configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ZONE_ID to enable it."

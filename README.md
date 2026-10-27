@@ -13,7 +13,7 @@ The workflow refreshes daily at 07:00 UTC. You can also run **Actions → Refres
 
 ## Custom domain and Cloudflare
 
-The intended site is [https://peloton.guitard.ca/](https://peloton.guitard.ca/). `docs/CNAME` configures this hostname for GitHub Pages. In **Settings → Pages**, confirm the same custom domain is set. Cloudflare DNS must route this hostname to GitHub Pages, and any redirect rule must preserve this hostname instead of forwarding visitors to `guitard.ca`.
+The intended site is [https://peloton.guitard.ca/](https://peloton.guitard.ca/). The repository’s **Settings → Pages** already has this custom domain configured; a CNAME file is not used by this GitHub Actions publishing workflow. In Cloudflare, set a CNAME for `peloton` pointing to `ericguitard.github.io`. Check that Cloudflare proxy or redirect rules do not forward visitors to `guitard.ca`; using DNS-only while GitHub verifies the record and provisions HTTPS is a useful troubleshooting step.
 
 The deployment workflow checks the report and `data/peloton_data.json` at the custom domain after publishing. To enable targeted cache purges in Cloudflare, configure:
 

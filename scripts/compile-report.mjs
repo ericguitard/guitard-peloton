@@ -13,6 +13,6 @@ const template = JSON.parse(String.fromCharCode(34) + source.slice(valueStart, v
 const compiled = compile(template, { mode: "function", prefixIdentifiers: false });
 const render = "(function(){" + compiled.code + "})()";
 const result = source.slice(0, start) + "    render: " + render + source.slice(valueEnd + 1);
-const runtime = "https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js";
-const runtimeOnly = "https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.runtime.global.prod.js";
+const runtime = "vendor/vue.global.prod.js";
+const runtimeOnly = "vendor/vue.runtime.global.prod.js";
 fs.writeFileSync(output, result.replace(runtime, runtimeOnly));

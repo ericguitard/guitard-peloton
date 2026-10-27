@@ -48,7 +48,7 @@ jobs:
 
       - name: Fetch from Peloton
         env:
-          PELOTON_TOKEN: __TOKEN__
+          PELOTON_TOKEN: ${{ secrets.PELOTON_TOKEN }}
         run: python collector/peloton_collector.py --out docs/data/peloton_data.json
 
       - name: Commit updated data

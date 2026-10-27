@@ -42,6 +42,21 @@ jobs:
           if grep -q "vue.global.prod.js" work/index.html; then exit 1; fi
           grep -q "vue.runtime.global.prod.js" work/index.html
 
+      - name: Print CSP script hash
+        run: |
+          python - <<'PY'
+          import base64
+          import hashlib
+          import re
+          from pathlib import Path
+          html = Path('work/index.html').read_text(encoding='utf-8')
+          scripts = [m.group(1) for m in re.finditer(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>', html, re.I) if m.group(1)]
+          if len(scripts) != 1:
+              raise SystemExit(f'expected one inline script, found {len(scripts)}')
+          digest = hashlib.sha256(scripts[0].encode()).digest()
+          print('CSP script hash: sha256-' + base64.b64encode(digest).decode())
+          PY
+
       - name: Validate report and data
         run: |
           python - <<'PY'

@@ -102,6 +102,10 @@ jobs:
             echo "::error::Generated report still references the compiler-including Vue build"
             exit 1
           fi
+          if ! grep -q "var Vue=" docs/index.html; then
+            echo "::error::Generated report does not contain the self-contained Vue runtime"
+            exit 1
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

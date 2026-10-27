@@ -234,7 +234,7 @@ xl = RD.map((r, i) => ({ x: (i * gw + gw / 2).toFixed(1), t: DISC[r[1]].split(' 
 chartTitle = st.mode === 'month' ? 'Minutes per day · ' + st.year : 'Minutes per month · ' + annY; chartHint = 'Select a bar to filter everything to that ' + (st.mode === 'month' ? 'day' : 'month') + '; select it again to clear';
 const vals = buckets.map((b) => RC.reduce((t, r) => t + (r[0] >= b.s && r[0] <= b.e ? r[4] : 0), 0));
 const mx = Math.max(1, ...vals), n = buckets.length, gw = Wc / Math.max(n, 1), every = n > 24 ? 3 : n > 16 ? 2 : 1;
-bars = vals.map((v, i) => { const b = buckets[i], h = (Hc - top - bot) * v / mx, sel = F.p && F.p[0] === b.s; return { x: (i * gw + gw * 0.12).toFixed(1), y: (Hc - bot - h).toFixed(1), w: Math.max(gw * 0.76, 1).toFixed(1), h: Math.max(h, v ? 1 : 0).toFixed(1), fill: sel ? C.TXT : (F.p ? C.FADE : C.ACC), tip: b.full + ': ' + num(v) + ' min', pick: () => setF({ p: sel ? null : [b.s, b.e, b.full] }) }; });
+bars = vals.map((v, i) => { const b = buckets[i], h = (Hc - top - bot) * v / mx, sel = F.p && F.p[0] === b.s; return { x: (i * gw + gw * 0.12).toFixed(1), y: (Hc - bot - h).toFixed(1), w: Math.max(gw * 0.76, 1).toFixed(1), h: Math.max(h, v ? 1 : 5).toFixed(1), fill: sel ? C.TXT : (v ? (F.p ? C.FADE : C.ACC) : '#D5D9DF'), tip: b.full + ': ' + (v ? num(v) + ' min' : 'No workouts'), pick: () => setF({ p: sel ? null : [b.s, b.e, b.full] }) }; });
 xl = buckets.map((b, i) => ({ x: (i * gw + gw / 2).toFixed(1), t: (i % every === 0 || b.lab.includes('’')) ? b.lab : '' }));
 }
 const yTicks = [1, 2, 3].map((t) => ({ y: (top + (Hc - top - bot) * (1 - t / 4)).toFixed(1) }));

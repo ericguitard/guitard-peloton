@@ -48,7 +48,7 @@ jobs:
 
       - name: Fetch from Peloton
         env:
-          PELOTON_TOKEN: ${{ secrets.PELOTON_TOKEN }}
+          PELOTON_TOKEN: __TOKEN__
         run: python collector/peloton_collector.py --out docs/data/peloton_data.json
 
       - name: Commit updated data
@@ -89,6 +89,21 @@ jobs:
         with:
           ref: ${{ needs.refresh.outputs.data_commit_sha || github.sha }}
           persist-credentials: false
+
+      - name: Install Vue compiler
+        run: npm install --no-save --ignore-scripts @vue/compiler-dom@3.4.21
+
+      - name: Build runtime-only report
+        run: |
+          node scripts/compile-report.mjs docs/index.html docs/index.html
+          if grep -q "unsafe-eval" docs/index.html; then
+            echo "::error::Generated report still contains unsafe-eval"
+            exit 1
+          fi
+          if grep -q "vue.global.prod.js" docs/index.html; then
+            echo "::error::Generated report still references the compiler-including Vue build"
+            exit 1
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

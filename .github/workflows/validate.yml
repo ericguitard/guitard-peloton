@@ -45,14 +45,11 @@ jobs:
       - name: Print CSP script hash
         run: |
           python - <<'PY'
-          import base64
-          import hashlib
-          import re
+          import base64, hashlib, re
           from pathlib import Path
           html = Path('work/index.html').read_text(encoding='utf-8')
           scripts = [m.group(1) for m in re.finditer(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>', html, re.I) if m.group(1)]
-          if len(scripts) != 1:
-              raise SystemExit(f'expected one inline script, found {len(scripts)}')
+          if len(scripts) != 1: raise SystemExit(f'expected one inline script, found {len(scripts)}')
           digest = hashlib.sha256(scripts[0].encode()).digest()
           print('CSP script hash: sha256-' + base64.b64encode(digest).decode())
           PY
@@ -63,19 +60,16 @@ jobs:
           import json
           from pathlib import Path
           html = Path('docs/index.html').read_text(encoding='utf-8')
-          if 'peloton_data.json' not in html or 'createApp' not in html:
-              raise SystemExit('report does not contain the expected application wiring')
+          if 'peloton_data.json' not in html or 'createApp' not in html: raise SystemExit('report wiring is incomplete')
           data = json.loads(Path('docs/data/peloton_data.json').read_text(encoding='utf-8'))
-          if data.get('source') != 'peloton-api' or not isinstance(data.get('rows'), list):
-              raise SystemExit('data file is missing the expected Peloton schema')
+          if data.get('source') != 'peloton-api' or not isinstance(data.get('rows'), list): raise SystemExit('data schema is invalid')
           print(f"validated {len(data['rows'])} workout rows")
           PY
 
       - name: Check for accidental secrets
         shell: bash
         run: |
-          if rg -n --hidden --glob '!.git/**' --glob '!docs/data/peloton_data.json' \
-            '(Authorization: Bearer|PELOTON_TOKEN=.{8,}|-----BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY-----)' .; then
+          if grep -RIn --exclude-dir=.git --exclude=peloton_data.json -E '(Authorization: Bearer|PELOTON_TOKEN=.{8,}|-----BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY-----)' .; then
             echo '::error::Possible credential material found in tracked files.'
             exit 1
           fi

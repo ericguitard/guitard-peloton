@@ -49,9 +49,10 @@ jobs:
           from pathlib import Path
           html = Path('work/index.html').read_text(encoding='utf-8')
           scripts = [m.group(1) for m in re.finditer(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>', html, re.I) if m.group(1)]
-          if len(scripts) != 1: raise SystemExit(f'expected one inline script, found {len(scripts)}')
-          digest = hashlib.sha256(scripts[0].encode()).digest()
-          print('CSP script hash: sha256-' + base64.b64encode(digest).decode())
+          if not scripts: raise SystemExit('expected at least one inline script')
+          for script in scripts:
+              digest = hashlib.sha256(script.encode()).digest()
+              print('CSP script hash: sha256-' + base64.b64encode(digest).decode())
           PY
 
       - name: Validate report and data

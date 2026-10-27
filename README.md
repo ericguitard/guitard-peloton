@@ -1,20 +1,29 @@
 # Peloton Workout Report
 
-A self-updating copy of the Workout Report on GitHub Pages. Every night a GitHub Action signs in to Peloton with your token, pulls your workouts, badges and streaks into `docs/data/peloton_data.json`, commits it and republishes the site. The page loads that file whenever it opens.
+A personal workout report hosted on GitHub Pages. The scheduled GitHub Actions workflow refreshes workout history, badges, and streaks from Peloton, commits the generated JSON, and deploys the report. Changes under `docs/` also trigger a deployment.
 
-## One-time setup
+## GitHub setup
 
-1. **Create the repository.** On GitHub, make a new repository (for example `peloton-report`) and upload everything in this folder, keeping the folder structure, including the hidden `.github` and `docs/.nojekyll`.
-2. **Add your token as a secret.** Get your Bearer token (sign in at members.onepeloton.com, press F12, open Network, refresh, click any request to `api.onepeloton.com` and copy the value after `Authorization: Bearer`). In the repository go to **Settings → Secrets and variables → Actions → New repository secret**, name it `PELOTON_TOKEN` and paste the token.
-3. **Turn on Pages.** **Settings → Pages → Build and deployment → Source: GitHub Actions.**
-4. **Run it once.** **Actions → Refresh Peloton data → Run workflow.** When it finishes, the site is at `https://<your-username>.github.io/<repository-name>/`.
+1. In **Settings → Pages**, set the build source to **GitHub Actions**.
+2. Add the Peloton Bearer token as an Actions secret named `PELOTON_TOKEN`. Do not put the token in the repository, workflow files, or Pages output. For local use, the collector reads `collector/peloton_token.txt`; that file is ignored by Git.
+3. Ensure the repository Actions setting permits the workflow’s `GITHUB_TOKEN` to write contents. The refresh job needs this permission to commit updated workout data to `main`.
+4. Keep the `github-pages` deployment environment available for the Pages deploy job.
 
-After that it runs on its own every night.
+The workflow refreshes daily at 07:00 UTC. You can also run **Actions → Refresh Peloton data → Run workflow** on `main`.
 
-## Good to know
+## Custom domain and Cloudflare
 
-- **The site is public.** GitHub Pages sites can be seen by anyone with the link, even from a private repository (unless you are on GitHub Enterprise Cloud), and so can `data/peloton_data.json`. The page asks search engines not to index it, but that does not make it private. The page also shows Peloton's logo and badge images.
-- **When the token expires** (roughly once a year), the nightly run fails and GitHub emails you. Paste a fresh token into the `PELOTON_TOKEN` secret and run the workflow again.
-- **Timing.** The schedule is 07:00 UTC: midnight Mountain Standard Time, 1:00 a.m. in summer. Change the `cron` line in `.github/workflows/refresh-peloton.yml` for another time. GitHub sometimes starts scheduled runs a little late.
-- **Peloton's API is unofficial.** Peloton can change it without notice, and some services block requests from cloud servers. If the nightly run starts failing with 403 errors, Peloton is likely refusing GitHub's servers and the collector will need to run from your own computer instead.
-- `collector/peloton_collector.py` still works on your laptop exactly as before (it reads `peloton_token.txt` when the secret is not set), and `fetch_all()` is unchanged for the desktop connector.
+The intended site is [https://peloton.guitard.ca/](https://peloton.guitard.ca/). `docs/CNAME` configures this hostname for GitHub Pages. In **Settings → Pages**, confirm the same custom domain is set. Cloudflare DNS must route this hostname to GitHub Pages, and any redirect rule must preserve this hostname instead of forwarding visitors to `guitard.ca`.
+
+The deployment workflow checks the report and `data/peloton_data.json` at the custom domain after publishing. To enable targeted cache purges in Cloudflare, configure:
+
+- Actions variable `CLOUDFLARE_ZONE_ID` for the `guitard.ca` zone.
+- Actions secret `CLOUDFLARE_API_TOKEN` with only the Cloudflare cache purge permission for that zone.
+
+The purge is skipped when either value is missing. Never place the token in a variable or commit it to the repository.
+
+## Privacy and maintenance
+
+The report and `docs/data/peloton_data.json` are public. Workout history, badges, streaks, and the Peloton username in the JSON can be viewed by anyone. The page asks search engines not to index the data, but this does not make it private. Remove the public data or change hosting if you do not want it publicly available.
+
+Peloton’s API is unofficial and may change. If the collector fails, check the Actions run and refresh `PELOTON_TOKEN` if Peloton has expired it. The workflow pins third-party actions to commit SHAs; Dependabot checks for updates weekly.

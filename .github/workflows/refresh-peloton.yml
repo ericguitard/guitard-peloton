@@ -108,8 +108,20 @@ jobs:
             echo "::error::Generated report still references the compiler-including Vue build"
             exit 1
           fi
-          if ! grep -q "var Vue=" docs/index.html; then
-            echo "::error::Generated report does not contain the self-contained Vue runtime"
+          if grep -q "<script>" docs/index.html || grep -q "<style>" docs/index.html; then
+            echo "::error::Generated report still contains inline script or style blocks"
+            exit 1
+          fi
+          if grep -q "vue.global.prod.js" docs/index.html; then
+            echo "::error::Generated report still references the compiler-including Vue build"
+            exit 1
+          fi
+          if ! grep -q 'vendor/vue.runtime.global.prod.js' docs/index.html; then
+            echo "::error::Generated report does not reference the Vue runtime"
+            exit 1
+          fi
+          if ! grep -q 'report-app.js' docs/index.html || [ ! -s docs/report-app.js ] || [ ! -s docs/report.css ]; then
+            echo "::error::Generated report assets are missing"
             exit 1
           fi
 

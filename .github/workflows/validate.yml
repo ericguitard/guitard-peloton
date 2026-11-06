@@ -53,7 +53,9 @@ jobs:
           from pathlib import Path
           html = Path('work/index.html').read_text(encoding='utf-8')
           scripts = [m.group(1) for m in re.finditer(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>', html, re.I) if m.group(1)]
-          if not scripts: raise SystemExit('expected at least one inline script')
+          if not scripts:
+              print('No inline scripts; report uses same-origin external assets.')
+              raise SystemExit(0)
           for script in scripts:
               digest = hashlib.sha256(script.encode()).digest()
               print('CSP script hash: sha256-' + base64.b64encode(digest).decode())

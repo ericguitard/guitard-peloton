@@ -1,2 +1,3 @@
 runtime-only Vue build enabled by the hardened deployment workflow
 active challenge tiers synced 2026-11-06
+clean Pages publish attempt

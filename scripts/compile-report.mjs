@@ -22,9 +22,9 @@ const transforms = [
   ["showAnalysis: st.page === 'overview' || (st.page === 'inst' && instSel),", "showAnalysis: st.page === 'overview',"],
   ["discVal: String(F.d), discOpts: discOpts, onDisc: (ev) => setF({ d: +ev.target.value }),", "discVal: dSel.map(String), discOpts: discOpts, onDisc: (ev) => { const vals = [...ev.target.selectedOptions].map((o) => +o.value).filter((v) => v >= 0); setF({ ds: vals }); },"],
   ["instVal: String(F.i), instOpts: instOpts, onInst: (ev) => setF({ i: +ev.target.value }),", "instVal: iSel.map(String), instOpts: instOpts, onInst: (ev) => { const vals = [...ev.target.selectedOptions].map((o) => +o.value).filter((v) => v >= 0); setF({ is: vals }); },"],
-  ["<template v-if=\"isInst\"><div style=\"display: flex; flex-direction: column; gap: 4px\"><label for=\"f-inst\"", "<template v-if=\"isOverview\"><div style=\"display: flex; flex-direction: column; gap: 4px\"><label for=\"f-inst\""],
-  ["<select id=\"f-disc\" :value=\"discVal\" @change=\"onDisc\"", "<select id=\"f-disc\" multiple size=\"1\" :value=\"discVal\" @change=\"onDisc\""],
-  ["<select id=\"f-inst\" :value=\"instVal\" @change=\"onInst\"", "<select id=\"f-inst\" multiple size=\"1\" :value=\"instVal\" @change=\"onInst\""],
+  ["<template v-if=\\\"isInst\\\"><div style=\\\"display: flex; flex-direction: column; gap: 4px\\\"><label for=\\\"f-inst\\\"", "<template v-if=\\\"isOverview\\\"><div style=\\\"display: flex; flex-direction: column; gap: 4px\\\"><label for=\\\"f-inst\\\""],
+  ["<select id=\\\"f-disc\\\" :value=\\\"discVal\\\" @change=\\\"onDisc\\\"", "<select id=\\\"f-disc\\\" multiple size=\\\"1\\\" :value=\\\"discVal\\\" @change=\\\"onDisc\\\""],
+  ["<select id=\\\"f-inst\\\" :value=\\\"instVal\\\" @change=\\\"onInst\\\"", "<select id=\\\"f-inst\\\" multiple size=\\\"1\\\" :value=\\\"instVal\\\" @change=\\\"onInst\\\""],
 ];
 for (const [from, to] of transforms) {
   if (!source.includes(from)) throw new Error(`Report transform did not match: ${from.slice(0, 80)}`);

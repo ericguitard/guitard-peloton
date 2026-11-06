@@ -457,7 +457,9 @@ Component.prototype.fetchLive = async function (quiet) {
   window.setTimeout(showRuntimeFallback, 5000);
   window.addEventListener('error', showRuntimeFallback);
   window.addEventListener('unhandledrejection', showRuntimeFallback);
+  const isWorkoutLog = () => [...document.querySelectorAll('h2')].some((el) => el.textContent.trim() === 'Workout Log');
   const workoutLogTable = () => {
+    if (!isWorkoutLog()) return null;
     const marker = [...document.querySelectorAll('p')].find((el) => /^All \d+ workouts in /.test(el.textContent.trim()));
     const section = marker?.closest('section');
     return section?.querySelector('table') || null;
@@ -477,7 +479,7 @@ Component.prototype.fetchLive = async function (quiet) {
   let exportTicks = 0; const exportTimer = window.setInterval(() => { installLogExport(); if (++exportTicks > 60) window.clearInterval(exportTimer); }, 1000);
   document.addEventListener('keydown', (event) => {
     if (event.altKey && /^[1-4]$/.test(event.key)) { const button = [...document.querySelectorAll('nav[aria-label="Report pages"] button')][Number(event.key) - 1]; if (button) { event.preventDefault(); button.click(); } }
-    if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'e') { event.preventDefault(); exportWorkoutLog(); }
+    if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'e' && isWorkoutLog()) { event.preventDefault(); exportWorkoutLog(); }
   });
 })();
 </script>

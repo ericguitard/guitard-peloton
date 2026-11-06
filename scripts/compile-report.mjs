@@ -25,7 +25,7 @@ const runtime = "vendor/vue.global.prod.js";
 const runtimeOnly = "vendor/vue.runtime.global.prod.js";
 const runtimeSource = fs.readFileSync(new URL("../docs/vendor/vue.runtime.global.prod.js", import.meta.url), "utf8");
 const externalRuntime = result.replace(runtime, runtimeOnly);
-const appMatch = externalRuntime.match(/<script>\r?\n([\s\S]*?)\r?\n<\/script>/);
+const appMatch = externalRuntime.match(/<script(?:\s[^>]*)?>\r?\n([\s\S]*?)\r?\n<\/script>/);
 if (!appMatch) throw new Error("Compiled report script was not found");
 const outputDir = path.dirname(output);
 const appPath = path.join(outputDir, "report-app.js");
@@ -37,3 +37,4 @@ const cssPath = path.join(outputDir, "report.css");
 fs.writeFileSync(cssPath, styleMatch[1] + "\n");
 const externalAssets = externalApp.replace(styleMatch[0], "<link rel=\"stylesheet\" href=\"report.css\">");
 fs.writeFileSync(output, externalAssets);
+

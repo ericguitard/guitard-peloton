@@ -73,3 +73,34 @@ body { background: #101114; color: #F7F8F9; }
 .meter span { display: block; width: 25%; height: 100%; border-radius: inherit; background: #DF1C2F; }
 .card-note { margin: 14px 0 0; color: #858A96; font-size: 13px; }
 @media (max-width: 760px) { body { background: #101114; } .page-shell { padding: 18px; } .report-header { padding-bottom: 26px; } .header-chip { display: none; } .hero-panel { grid-template-columns: 1fr; padding: 30px 24px; } .training-ring { width: 190px; justify-self: start; } .stat-grid { grid-template-columns: 1fr; } }
+
+/* BodyBlast-inspired 404 layout */
+body { background: #f1eee6; color: #171717; }
+.page-shell { width: min(100%, 1240px); padding: 30px 34px 22px; }
+.report-header { padding: 0 0 28px; }
+.brand-link { color: #171717; }
+.brand-link small { color: #656158; }
+.brand-mark { border-color: #171717; color: #171717; background: #d6ff3f; }
+.header-chip { border-color: #171717; color: #171717; font-weight: 800; }
+.bodyblast-error { min-height: min(720px, calc(100vh - 150px)); display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); align-items: center; gap: 24px; overflow: hidden; border-radius: 30px; background: #d6ff3f; }
+.bodyblast-copy { padding: clamp(34px, 7vw, 90px); z-index: 1; }
+.bodyblast-copy .eyebrow { color: #171717; font-size: 13px; letter-spacing: .18em; }
+.bodyblast-copy h1 { margin: 8px 0 20px; color: #171717; font-size: clamp(74px, 13vw, 170px); font-weight: 950; line-height: .78; letter-spacing: -.09em; }
+.bodyblast-copy h1 span { display: block; margin-top: 20px; font-size: clamp(26px, 4vw, 50px); line-height: .9; letter-spacing: -.04em; }
+.bodyblast-copy .message { max-width: 390px; color: #171717; font-size: 16px; font-weight: 600; line-height: 1.45; }
+.bodyblast-copy .actions { margin-top: 30px; }
+.bodyblast-copy .action-primary { background: #171717; color: #fff; }
+.bodyblast-art { position: relative; min-height: 100%; overflow: hidden; background: #171717; }
+.art-sun { position: absolute; width: 460px; height: 460px; top: 50%; left: 50%; border-radius: 50%; background: #ff5a36; transform: translate(-50%, -50%); }
+.art-sun::before, .art-sun::after { content: ""; position: absolute; inset: 22px; border: 2px solid rgba(23,23,23,.22); border-radius: 50%; }
+.art-sun::after { inset: 48px; }
+.art-number { position: absolute; top: 50%; left: 50%; color: #d6ff3f; font-size: clamp(96px, 15vw, 200px); font-weight: 950; line-height: .8; letter-spacing: -.12em; transform: translate(-50%, -56%) rotate(-8deg); }
+.art-dumbbell { position: absolute; top: 51%; left: 50%; width: 260px; height: 58px; transform: translate(-50%, -50%) rotate(-20deg); }
+.art-dumbbell b { position: absolute; left: 38px; right: 38px; top: 22px; height: 14px; background: #171717; }
+.art-dumbbell i, .art-dumbbell em { position: absolute; display: block; width: 24px; height: 76px; top: -9px; border-radius: 7px; background: #171717; }
+.art-dumbbell i:first-child { left: 12px; }.art-dumbbell i:nth-child(3) { right: 12px; }
+.art-dumbbell em { width: 14px; height: 96px; top: -19px; background: #d6ff3f; }.art-dumbbell em:nth-of-type(1) { left: 0; }.art-dumbbell em:nth-of-type(2) { right: 0; }
+.art-caption { position: absolute; right: 24px; bottom: 22px; color: #171717; font-size: 11px; font-weight: 900; letter-spacing: .14em; line-height: 1.1; text-align: right; }
+.report-footer { display: flex; justify-content: space-between; gap: 16px; padding: 18px 2px 0; color: #656158; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.report-footer a { color: #171717; text-decoration: none; }
+@media (max-width: 760px) { body { background: #d6ff3f; } .page-shell { padding: 18px; } .report-header { padding-bottom: 20px; } .header-chip { display: none; } .bodyblast-error { min-height: 0; grid-template-columns: 1fr; gap: 0; border-radius: 22px; } .bodyblast-copy { padding: 42px 26px 36px; } .bodyblast-art { min-height: 330px; } .art-sun { width: 300px; height: 300px; } .art-dumbbell { transform: translate(-50%, -50%) rotate(-20deg) scale(.8); } .report-footer { color: #171717; } }

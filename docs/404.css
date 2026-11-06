@@ -28,7 +28,7 @@ body { margin: 0; background: #ff7918; }
 
 .rest-day__eyebrow {
   margin: 0 0 18px;
-  font-size: clamp(30px, 5vw, 58px);
+  font-size: clamp(42px, 7vw, 86px);
   font-weight: 900;
   letter-spacing: .08em;
   line-height: .85;
@@ -36,7 +36,7 @@ body { margin: 0; background: #ff7918; }
 
 h1 {
   margin: 0;
-  font-size: clamp(46px, 8vw, 108px);
+  font-size: clamp(34px, 6vw, 78px);
   font-weight: 950;
   line-height: .82;
   letter-spacing: -.09em;

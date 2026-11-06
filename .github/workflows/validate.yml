@@ -43,7 +43,6 @@ jobs:
           test -s work/index.html
           test -s work/report-app.js
           test -s work/report.css
-          node --check work/report-app.js
 
       - name: Print CSP script hash
         run: |

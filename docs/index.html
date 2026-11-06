@@ -42,9 +42,9 @@ const DISC = ['Strength','Strength+','Meditation','Breathwrk','Cycling','Walking
 const ALIAS = { 'Bootcamp': 'Tread Bootcamp', 'Tread': 'Running', 'Rowing Bootcamp': 'Row Bootcamp' };
 const inst = [''], typ = [''], ii = new Map([['', 0]]), ti = new Map([['', 0]]);
 const BASE = Date.UTC(2022, 0, 1);
-const w = [];
+const w = []; let skipped = 0;
 j.workouts.forEach((x) => {
-const [y, m, d] = String(x.date).split('-').map(Number); if (!y) return;
+const [y, m, d] = String(x.date).split('-').map(Number); if (!y || !m || !d) { skipped++; return; }
 let dn = ALIAS[x.disc] || x.disc; if (dn === 'Strength' && !x.inst && !x.type) dn = 'Strength+'; if (dn === 'Meditation' && !x.inst && !x.type) dn = 'Breathwrk'; if (!DISC.includes(dn)) DISC.push(dn);
 if (!ii.has(x.inst)) { ii.set(x.inst, inst.length); inst.push(x.inst); }
 if (!ti.has(x.type)) { ti.set(x.type, typ.length); typ.push(x.type); }
@@ -53,7 +53,7 @@ w.push([Math.round((Date.UTC(y, m - 1, d) - BASE) / 864e5), DISC.indexOf(dn), ii
 });
 const badges = {}; (j.badges || []).forEach((b) => { if (b.count) badges[b.name] = { count: b.count, cat: b.category || '' }; });
 const when = j.generated ? new Date(j.generated) : null;
-return { D: { w: w, disc: DISC, inst: inst, type: typ }, badges: badges, label: 'Data as of' + (when ? ' ' + when.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '') };
+return { D: { w: w, disc: DISC, inst: inst, type: typ }, badges: badges, label: 'Data as of' + (when ? ' ' + when.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '') + (skipped ? ' · ' + skipped + ' invalid rows skipped' : '') };
 }
 async fetchLive() {
 if (this.state.fetching) return;
@@ -448,6 +448,32 @@ Component.prototype.fetchLive = async function (quiet) {
     buttons.forEach((button) => { if (button.parentElement !== pager) pager.appendChild(button); });
   };
   alignBadgePager();
+  const app = document.querySelector('#app');
+  const showRuntimeFallback = () => {
+    if (app && app.textContent.includes('Loading the report')) {
+      app.innerHTML = '<div style="max-width:640px;margin:48px auto;padding:24px;background:#FFFFFF;border:1px solid #E1E4E8;border-radius:16px;font-family:Inter,system-ui,sans-serif;color:#181A1D"><h1 style="margin:0 0 8px;font-size:24px">The report could not start</h1><p style="margin:0;color:#5B6069;line-height:1.5">Refresh the page once. If it still does not load, clear this site’s cached data and try again.</p></div>';
+    }
+  };
+  window.setTimeout(showRuntimeFallback, 5000);
+  window.addEventListener('error', showRuntimeFallback);
+  window.addEventListener('unhandledrejection', showRuntimeFallback);
+  const exportWorkoutLog = () => {
+    const table = [...document.querySelectorAll('table')].find((el) => el.querySelector('th') && /DATE|DISCIPLINE/.test(el.textContent));
+    if (!table) return;
+    const rows = [...table.querySelectorAll('tr')].map((row) => [...row.children].map((cell) => '"' + cell.textContent.replace(/\s+/g, ' ').trim().replace(/"/g, '""') + '"').join(','));
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'peloton-workout-log.csv'; link.click(); URL.revokeObjectURL(link.href);
+  };
+  const installLogExport = () => {
+    const table = [...document.querySelectorAll('table')].find((el) => el.querySelector('th') && /DATE|DISCIPLINE/.test(el.textContent));
+    if (!table || document.querySelector('[data-export-log]')) return;
+    const button = document.createElement('button'); button.type = 'button'; button.dataset.exportLog = 'true'; button.textContent = 'Export filtered CSV'; button.title = 'Download the currently visible workout log as CSV'; button.style.cssText = 'min-height:36px;padding:0 12px;border-radius:999px;background:#FFFFFF;border:1px solid #C9CDD3;color:#3A5A8C;font:inherit;font-size:13px;font-weight:600;cursor:pointer;'; button.addEventListener('click', exportWorkoutLog); table.closest('section')?.insertBefore(button, table.parentElement);
+  };
+  let exportTicks = 0; const exportTimer = window.setInterval(() => { installLogExport(); if (++exportTicks > 60) window.clearInterval(exportTimer); }, 1000);
+  document.addEventListener('keydown', (event) => {
+    if (event.altKey && /^[1-4]$/.test(event.key)) { const button = [...document.querySelectorAll('nav[aria-label="Report pages"] button')][Number(event.key) - 1]; if (button) { event.preventDefault(); button.click(); } }
+    if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'e') { event.preventDefault(); exportWorkoutLog(); }
+  });
 })();
 </script>
 </body>

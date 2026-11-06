@@ -104,3 +104,18 @@ body { background: #f1eee6; color: #171717; }
 .report-footer { display: flex; justify-content: space-between; gap: 16px; padding: 18px 2px 0; color: #656158; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
 .report-footer a { color: #171717; text-decoration: none; }
 @media (max-width: 760px) { body { background: #d6ff3f; } .page-shell { padding: 18px; } .report-header { padding-bottom: 20px; } .header-chip { display: none; } .bodyblast-error { min-height: 0; grid-template-columns: 1fr; gap: 0; border-radius: 22px; } .bodyblast-copy { padding: 42px 26px 36px; } .bodyblast-art { min-height: 330px; } .art-sun { width: 300px; height: 300px; } .art-dumbbell { transform: translate(-50%, -50%) rotate(-20deg) scale(.8); } .report-footer { color: #171717; } }
+
+/* Reference-inspired orange barbell treatment */
+body { background: #ff7a18; }
+.page-shell { width: min(100%, 1240px); padding: 26px 34px; }
+.bodyblast-error { min-height: min(720px, calc(100vh - 52px)); background: #ff7a18; }
+.bodyblast-copy { padding: clamp(34px, 7vw, 90px); }
+.bodyblast-copy .eyebrow { color: #171717; }
+.bodyblast-copy h1 { color: #171717; }
+.bodyblast-copy .message { color: #171717; }
+.bodyblast-copy .action-primary { background: #171717; color: #fff; }
+.bodyblast-art { background: #ff7a18; }
+.art-number { color: #171717; font-size: clamp(110px, 17vw, 230px); opacity: .16; transform: translate(-50%, -60%) rotate(-8deg); }
+.barbell { position: absolute; z-index: 1; top: 50%; left: 50%; width: min(92%, 540px); height: auto; transform: translate(-50%, -47%) rotate(-4deg); filter: drop-shadow(0 18px 0 rgba(216,75,29,.38)); }
+.art-caption { color: #171717; }
+@media (max-width: 760px) { body { background: #ff7a18; } .page-shell { padding: 18px; } .bodyblast-error { min-height: 0; } .bodyblast-art { min-height: 340px; } }

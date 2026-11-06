@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import path from "node:path";
 import { compile } from "@vue/compiler-dom";
 const input = process.argv[2] ?? "docs/index.html";
 const output = process.argv[3] ?? input;
@@ -22,8 +23,14 @@ const render = "(function(){" + compiled.code + "})()";
 const result = source.slice(0, start) + "    render: " + render + source.slice(valueEnd + 1);
 const runtime = "vendor/vue.global.prod.js";
 const runtimeOnly = "vendor/vue.runtime.global.prod.js";
-const runtimeSource = fs.readFileSync(new URL("../docs/vendor/vue.runtime.global.prod.js", import.meta.url), "utf8");
-const runtimeTag = "<script>\n" + runtimeSource + "\n</script>";
-const inlineCompiled = result.replace(runtime, runtimeOnly).replace("<script src=\"" + runtimeOnly + "\"></script>", runtimeTag);
-fs.writeFileSync(output, inlineCompiled);
-
+const externalRuntime = result.replace(runtime, runtimeOnly);
+const appMatch = externalRuntime.match(/<script>\r?\n([\s\S]*?)\r?\n<\/script>/);
+if (!appMatch) throw new Error("Compiled report script was not found");
+const outputDir = path.dirname(output);
+fs.writeFileSync(path.join(outputDir, "report-app.js"), appMatch[1] + "\n");
+const externalApp = externalRuntime.replace(appMatch[0], "<script src=\"report-app.js\"></script>");
+const styleMatch = externalApp.match(/<style>\r?\n([\s\S]*?)\r?\n<\/style>/);
+if (!styleMatch) throw new Error("Report stylesheet was not found");
+fs.writeFileSync(path.join(outputDir, "report.css"), styleMatch[1] + "\n");
+const externalAssets = externalApp.replace(styleMatch[0], "<link rel=\"stylesheet\" href=\"report.css\">");
+fs.writeFileSync(output, externalAssets);

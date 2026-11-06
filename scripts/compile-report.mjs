@@ -3,7 +3,33 @@ import path from "node:path";
 import { compile } from "@vue/compiler-dom";
 const input = process.argv[2] ?? "docs/index.html";
 const output = process.argv[3] ?? input;
-const source = fs.readFileSync(input, "utf8").replace(/const ISRC = \{[\s\S]*?\};/, "const ISRC = {};");
+let source = fs.readFileSync(input, "utf8").replace(/const ISRC = \{[\s\S]*?\};/, "const ISRC = {};");
+// Keep the report's public navigation and cross-filters compact: instructors are
+// filtered from Overview, and both selectors support multiple values. The source
+// report is a single generated HTML file, so these small transforms keep the
+// workflow's compiler as the single place that produces the published bundle.
+const transforms = [
+  ["f: uiSaved.f || { d: -1, i: -1, t: -1, l: -1, p: null }", "f: uiSaved.f || { d: -1, i: -1, ds: [], is: [], t: -1, l: -1, p: null }"],
+  ["const F = st.f;", "const F = Object.assign({ d: -1, i: -1, ds: [], is: [] }, st.f || {}); const dSel = Array.isArray(F.ds) ? F.ds : (F.d >= 0 ? [F.d] : []); const iSel = Array.isArray(F.is) ? F.is : (F.i >= 0 ? [F.i] : []);"],
+  ["(skip === 'd' || F.d < 0 || r[1] === F.d) && (skip === 'i' || F.i < 0 || r[2] === F.i)", "(skip === 'd' || dSel.length === 0 || dSel.includes(r[1])) && (skip === 'i' || iSel.length === 0 || iSel.includes(r[2]))"],
+  ["const setF = (patch) => this.setState({ f: Object.assign({}, F, patch) });\nconst tog = (k, v) => () => setF({ [k]: F[k] === v ? -1 : v });", "const setF = (patch) => { const next = Object.assign({}, F, patch); if (Object.prototype.hasOwnProperty.call(patch, 'ds')) next.d = patch.ds.length ? patch.ds[0] : -1; if (Object.prototype.hasOwnProperty.call(patch, 'is')) next.i = patch.is.length ? patch.is[0] : -1; this.setState({ f: next }); };\nconst tog = (k, v) => () => { const next = F[k] === v ? -1 : v; const patch = { [k]: next }; if (k === 'd') patch.ds = next < 0 ? [] : [next]; if (k === 'i') patch.is = next < 0 ? [] : [next]; setF(patch); };"],
+  ["const hasF = F.d >= 0 || F.i >= 0 || F.t >= 0 || F.l >= 0 || !!F.p;", "const hasF = dSel.length > 0 || iSel.length > 0 || F.t >= 0 || F.l >= 0 || !!F.p;"],
+  ["if (F.d >= 0) chips.push({ label: 'Discipline: ' + DISC[F.d], clear: () => setF({ d: -1 }) });", "if (dSel.length) chips.push({ label: dSel.length === 1 ? 'Discipline: ' + DISC[dSel[0]] : 'Disciplines: ' + dSel.length + ' selected', clear: () => setF({ d: -1, ds: [] }) });"],
+  ["if (F.i >= 0) chips.push({ label: 'Instructor: ' + INST[F.i], clear: () => setF({ i: -1 }) });", "if (iSel.length) chips.push({ label: iSel.length === 1 ? 'Instructor: ' + INST[iSel[0]] : 'Instructors: ' + iSel.length + ' selected', clear: () => setF({ i: -1, is: [] }) });"],
+  ["clearAll: () => setF({ d: -1, i: -1, t: -1, l: -1, p: null })", "clearAll: () => setF({ d: -1, i: -1, ds: [], is: [], t: -1, l: -1, p: null })"],
+  ["[['overview', 'Overview'], ['inst', 'Instructors'], ['ach', 'Achievements'], ['log', 'Workout Log']]", "[['overview', 'Overview'], ['ach', 'Achievements'], ['log', 'Workout Log']]"],
+  ["isOverview: st.page === 'overview', isDisc: st.page === 'disc', isInst: st.page === 'inst', isAch: st.page === 'ach', isLog: st.page === 'log',", "isOverview: st.page === 'overview', isDisc: false, isInst: false, isAch: st.page === 'ach', isLog: st.page === 'log',"],
+  ["showAnalysis: st.page === 'overview' || (st.page === 'inst' && instSel),", "showAnalysis: st.page === 'overview',"],
+  ["discVal: String(F.d), discOpts: discOpts, onDisc: (ev) => setF({ d: +ev.target.value }),", "discVal: dSel.map(String), discOpts: discOpts, onDisc: (ev) => { const vals = [...ev.target.selectedOptions].map((o) => +o.value).filter((v) => v >= 0); setF({ ds: vals }); },"],
+  ["instVal: String(F.i), instOpts: instOpts, onInst: (ev) => setF({ i: +ev.target.value }),", "instVal: iSel.map(String), instOpts: instOpts, onInst: (ev) => { const vals = [...ev.target.selectedOptions].map((o) => +o.value).filter((v) => v >= 0); setF({ is: vals }); },"],
+  ["<template v-if=\"isInst\"><div style=\"display: flex; flex-direction: column; gap: 4px\"><label for=\"f-inst\"", "<template v-if=\"isOverview\"><div style=\"display: flex; flex-direction: column; gap: 4px\"><label for=\"f-inst\""],
+  ["<select id=\"f-disc\" :value=\"discVal\" @change=\"onDisc\"", "<select id=\"f-disc\" multiple size=\"1\" :value=\"discVal\" @change=\"onDisc\""],
+  ["<select id=\"f-inst\" :value=\"instVal\" @change=\"onInst\"", "<select id=\"f-inst\" multiple size=\"1\" :value=\"instVal\" @change=\"onInst\""],
+];
+for (const [from, to] of transforms) {
+  if (!source.includes(from)) throw new Error(`Report transform did not match: ${from.slice(0, 80)}`);
+  source = source.replace(from, to);
+}
 const property = "    template: \"";
 const start = source.indexOf(property);
 if (start < 0) throw new Error("Vue template property was not found");
@@ -38,4 +64,3 @@ fs.writeFileSync(cssPath, styleMatch[1] + "\n");
 const runtimeTag = `<script src=\"${runtimeOnly}\"></script>`;
 const externalAssets = externalApp.replace(styleMatch[0], "<link rel=\"stylesheet\" href=\"report.css\">");
 fs.writeFileSync(output, externalAssets);
-

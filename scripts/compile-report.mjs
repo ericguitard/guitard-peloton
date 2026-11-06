@@ -3,7 +3,7 @@ import path from "node:path";
 import { compile } from "@vue/compiler-dom";
 const input = process.argv[2] ?? "docs/index.html";
 const output = process.argv[3] ?? input;
-const source = fs.readFileSync(input, "utf8");
+const source = fs.readFileSync(input, "utf8").replace(/const ISRC = \{[\s\S]*?\};/, "const ISRC = {};");
 const property = "    template: \"";
 const start = source.indexOf(property);
 if (start < 0) throw new Error("Vue template property was not found");

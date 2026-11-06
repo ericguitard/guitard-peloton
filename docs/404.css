@@ -27,15 +27,16 @@ body { margin: 0; background: #ff7918; }
 .rest-day__content { position: relative; z-index: 1; width: min(100%, 680px); text-align: center; }
 
 .rest-day__eyebrow {
-  margin: 0 0 22px;
-  font-size: 12px;
+  margin: 0 0 18px;
+  font-size: clamp(30px, 5vw, 58px);
   font-weight: 900;
-  letter-spacing: .2em;
+  letter-spacing: .08em;
+  line-height: .85;
 }
 
 h1 {
   margin: 0;
-  font-size: clamp(64px, 10vw, 142px);
+  font-size: clamp(46px, 8vw, 108px);
   font-weight: 950;
   line-height: .82;
   letter-spacing: -.09em;
@@ -77,12 +78,7 @@ h1 span {
 .rest-day__art { position: relative; display: grid; place-items: center; width: min(100%, 900px); min-height: 300px; }
 
 .rest-day__art::before {
-  content: "";
-  position: absolute;
-  width: min(48vw, 520px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: rgba(255, 205, 118, .32);
+  display: none;
 }
 
 .rest-day__art img {

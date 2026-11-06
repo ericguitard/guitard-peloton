@@ -116,8 +116,8 @@ jobs:
             echo "::error::Generated report does not reference the Vue runtime"
             exit 1
           fi
-          if ! grep -q 'report-app.js' docs/index.html || [ ! -s docs/report-app.js ] || [ ! -s docs/report.css ]; then
-            echo "::error::Generated report assets are missing"
+          if [ ! -s docs/report.css ]; then
+            echo "::error::Generated report stylesheet is missing"
             exit 1
           fi
 

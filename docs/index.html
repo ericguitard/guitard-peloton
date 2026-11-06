@@ -20,7 +20,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, label:focus-wit
 </style>
 </head>
 <body>
-<div id="app"><p style="font-family: Inter, sans-serif; padding: 40px; color: #5B6069">Loading the report…</p></div>
+<div id="app" data-build="e0ee71d"><p style="font-family: Inter, sans-serif; padding: 40px; color: #5B6069">Loading the report…</p></div>
 <script src="vendor/vue.global.prod.js"></script>
 <script>
 class DCLogic { constructor(p) { this.props = p || {}; } setState(patch) { Object.assign(this.state, patch); try { window.localStorage.setItem('pelotonReportUi', JSON.stringify({ page: this.state.page, badgeView: this.state.badgeView, badgePage: this.state.badgePage, mode: this.state.mode, year: this.state.year, month: this.state.month, day: this.state.day, sortTop: this.state.sortTop, sortL: this.state.sortL })); } catch (err) {} } }

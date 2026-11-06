@@ -1,0 +1,33 @@
+:root { color-scheme: light dark; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #181A1D; background: #F2F3F5; }
+* { box-sizing: border-box; }
+body { min-height: 100vh; margin: 0; background: #F2F3F5; }
+.skip-link { position: absolute; left: -9999px; top: 8px; padding: 8px 12px; background: #fff; color: #181A1D; }
+.skip-link:focus { left: 8px; z-index: 2; }
+.page-shell { width: min(100%, 1120px); margin: 0 auto; padding: 24px; }
+.site-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 0 36px; }
+.home-link { display: inline-flex; align-items: center; gap: 12px; color: #181A1D; font-weight: 700; text-decoration: none; }
+.home-link img { width: 44px; height: 44px; }
+.site-label { color: #5B6069; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.error-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr); gap: 28px; align-items: stretch; }
+.error-card, .route-card { background: #fff; border: 1px solid #E1E4E8; border-radius: 18px; padding: clamp(24px, 5vw, 48px); box-shadow: 0 16px 40px rgba(24, 26, 29, .08); }
+.error-card { display: flex; flex-direction: column; justify-content: center; }
+.eyebrow { margin: 0 0 10px; color: #DF1C2F; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.status-code { margin: 0; color: #DF1C2F; font-size: clamp(72px, 13vw, 140px); font-weight: 800; letter-spacing: -.08em; line-height: .85; }
+h1 { margin: 18px 0 12px; font-size: clamp(30px, 5vw, 56px); line-height: 1.02; letter-spacing: -.03em; }
+.message { max-width: 540px; margin: 0; color: #5B6069; font-size: 16px; line-height: 1.65; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+.action { display: inline-flex; min-height: 44px; align-items: center; padding: 0 16px; border-radius: 10px; font-weight: 700; text-decoration: none; }
+.action-primary { background: #DF1C2F; color: #fff; }
+.action-secondary { border: 1px solid #C9CDD3; color: #3A5A8C; background: #fff; }
+.route-card { display: flex; flex-direction: column; justify-content: center; }
+.route-card h2 { margin: 0 0 20px; font-size: 20px; }
+.route-list { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.route-step { display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: center; padding: 12px; border-radius: 12px; background: #F7F8F9; }
+.route-marker { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50%; background: #E8F4E9; color: #237A3B; font-weight: 800; }
+.route-step-failed .route-marker { background: #FDEBEC; color: #B31326; }
+.route-step strong, .route-step small { display: block; }
+.route-step small { margin-top: 2px; color: #5B6069; }
+.route-result { display: flex; justify-content: space-between; gap: 12px; margin: 20px 0 0; padding-top: 16px; border-top: 1px solid #E1E4E8; font-size: 13px; }
+.route-result span { color: #B31326; font-weight: 700; text-align: right; }
+a:focus-visible { outline: 3px solid #3A5A8C; outline-offset: 3px; }
+@media (max-width: 760px) { .page-shell { padding: 16px; } .site-header { padding-bottom: 24px; } .error-layout { grid-template-columns: 1fr; } }

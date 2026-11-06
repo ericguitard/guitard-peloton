@@ -438,18 +438,48 @@ Component.prototype.fetchLive = async function (quiet) {
     const heading = [...document.querySelectorAll('h3')].find((el) => el.textContent.includes('Special event badges'));
     if (!heading) return;
     const section = heading.closest('section');
-    const titleRow = heading.parentElement?.parentElement;
     const pageText = [...section.querySelectorAll('*')].find((el) => /^Calendar year \d{4} · page \d+ of \d+$/.test(el.textContent.trim()) && el.children.length === 0);
     const buttons = [...section.querySelectorAll('button')].filter((el) => el.textContent.trim() === 'Previous' || el.textContent.trim() === 'Next');
-    if (!titleRow || !pageText || buttons.length !== 2) return;
+    if (!pageText || buttons.length !== 2) return;
     if (/^Calendar year \d{4} · /.test(pageText.textContent.trim())) pageText.textContent = pageText.textContent.replace(/^Calendar year \d{4} · /, '');
-    let pager = titleRow.querySelector('[data-badge-pager]');
-    if (!pager) { pager = document.createElement('div'); pager.dataset.badgePager = 'true'; pager.style.cssText = 'display:flex;align-items:center;gap:8px;margin-left:auto;'; titleRow.appendChild(pager); }
+    let pager = section.querySelector('[data-badge-pager]');
+    if (!pager) { pager = document.createElement('div'); pager.dataset.badgePager = 'true'; pager.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:4px;'; section.appendChild(pager); }
     if (pageText.parentElement !== pager) pager.appendChild(pageText);
     buttons.forEach((button) => { if (button.parentElement !== pager) pager.appendChild(button); });
   };
-  new MutationObserver(alignBadgePager).observe(document.querySelector('#app'), { childList: true, subtree: true, characterData: true });
-  setTimeout(alignBadgePager, 0);
+  const enhanceDashboard = () => {
+    const app = document.querySelector('#app');
+    if (!app) return;
+    const body = app.textContent || '';
+    const page = ['Overview', 'Instructors', 'Achievements', 'Workout Log'].find((name) => [...app.querySelectorAll('h2')].some((el) => el.textContent.trim() === name));
+    if (!page) return;
+    let panel = app.querySelector('[data-dashboard-enhanced]');
+    if (!panel) { panel = document.createElement('section'); panel.dataset.dashboardEnhanced = 'true'; panel.style.cssText = 'background:#FFFFFF;border:1px solid #E1E4E8;border-radius:16px;padding:16px 20px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;'; const heading = [...app.querySelectorAll('h2')].find((el) => el.textContent.trim() === page); if (heading?.parentElement) heading.parentElement.insertAdjacentElement('afterend', panel); else app.prepend(panel); }
+    const title = page === 'Overview' ? 'Goals & progress' : page === 'Instructors' ? 'Instructor snapshot' : page === 'Achievements' ? 'Next up' : 'Workout log snapshot';
+    let details = [];
+    if (page === 'Overview') {
+      const annual = body.match(/The Annual \d{4} · [\d,]+ minutes[\s\S]*?(\d[\d,]*) \/ (\d[\d,]*) min/);
+      const streak = body.match(/DAILY STREAK (\d+) days/);
+      const workouts = body.match(/· ([\d,]+) workouts ·/);
+      const challengeCount = [...app.querySelectorAll('a[href*="/challenges/active/"]')].filter((el) => el.textContent.includes('Current:')).length;
+      details = [['Annual minutes', annual ? annual[1] + ' / ' + annual[2] + ' min' : '—'], ['Active challenges', String(challengeCount)], ['Daily streak', streak ? streak[1] + ' days' : '—'], ['Workouts in report', workouts ? workouts[1] : '—']];
+    } else if (page === 'Instructors') {
+      const rows = [...app.querySelectorAll('table tbody tr')].slice(0, 3).map((row) => row.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean);
+      details = [['Top instructors', rows.length ? rows.join(' · ') : 'Use the sortable table below'], ['Tip', 'Sort by classes, minutes, output, or latest workout']];
+    } else if (page === 'Achievements') {
+      const links = [...app.querySelectorAll('a[href*="/challenges/active/"]')].filter((el) => el.textContent.includes('Current:')).slice(0, 3);
+      details = [['Closest active goals', links.length ? links.map((el) => el.textContent.replace(/\s+/g, ' ').trim()).join(' · ') : 'No active goals found'], ['Badges', (body.match(/Not earned \((\d+)\)/) || [])[1] ? (body.match(/Not earned \((\d+)\)/) || [])[1] + ' not earned' : '—']];
+    } else {
+      const summary = body.match(/All ([\d,]+) workouts in ([^·]+)/);
+      const rows = app.querySelectorAll('table tbody tr').length;
+      details = [['Scope', summary ? summary[2].trim() : 'Current selection'], ['Rows shown', String(rows)], ['Tip', 'Use column headers and linked cells to drill into the log']];
+    }
+    const markup = '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap"><h3 style="margin:0;font-size:16px;font-weight:600">' + title + '</h3><span style="font-size:12px;color:#5B6069">Updated with the current view</span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">' + details.map((d) => '<div style="border:1px solid #E1E4E8;border-radius:10px;padding:10px 12px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#5B6069">' + d[0] + '</div><div style="margin-top:4px;font-size:14px;font-weight:600;line-height:1.4">' + d[1] + '</div></div>').join('') + '</div>';
+    if (panel.innerHTML !== markup) panel.innerHTML = markup;
+  };
+  const enhanceAll = () => { alignBadgePager(); enhanceDashboard(); };
+  new MutationObserver(enhanceAll).observe(document.querySelector('#app'), { childList: true, subtree: true, characterData: true });
+  setTimeout(enhanceAll, 0);
 })();
 </script>
 </body>

@@ -119,3 +119,12 @@ body { background: #ff7a18; }
 .barbell { position: absolute; z-index: 1; top: 50%; left: 50%; width: min(92%, 540px); height: auto; transform: translate(-50%, -47%) rotate(-4deg); filter: drop-shadow(0 18px 0 rgba(216,75,29,.38)); }
 .art-caption { color: #171717; }
 @media (max-width: 760px) { body { background: #ff7a18; } .page-shell { padding: 18px; } .bodyblast-error { min-height: 0; } .bodyblast-art { min-height: 340px; } }
+
+/* Unified rest-day composition */
+.bodyblast-error { display: flex; flex-direction: column; min-height: min(820px, calc(100vh - 52px)); gap: 0; }
+.bodyblast-copy { width: min(100%, 760px); padding: clamp(42px, 7vw, 82px) 24px 18px; text-align: center; }
+.bodyblast-copy .message { margin-right: auto; margin-left: auto; }
+.bodyblast-copy .actions { justify-content: center; }
+.bodyblast-art { width: min(100%, 980px); min-height: 260px; flex: 1; background: transparent; }
+.barbell-image { position: absolute; top: 50%; left: 50%; width: min(92%, 760px); height: auto; transform: translate(-50%, -48%); }
+@media (max-width: 760px) { .bodyblast-error { min-height: calc(100vh - 36px); } .bodyblast-copy { padding-top: 42px; } .bodyblast-art { min-height: 220px; } .barbell-image { width: 96%; } }

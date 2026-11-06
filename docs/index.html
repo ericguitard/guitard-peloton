@@ -21,7 +21,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, label:focus-wit
 </style>
 </head>
 <body>
-<div id="app" data-build="20261106-multifilter"><p class="report-loading">Loading the report…</p></div>
+<div id="app" data-build="20261106-csp-fix-2"><p class="report-loading">Loading the report…</p></div>
 <script src="vendor/vue.global.prod.js"></script>
 <script nonce="cGVsb3Rvbi1yZXBvcnQtYm9vdHN0cmFwLTIwMjYxMTA2">
 class DCLogic { constructor(p) { this.props = p || {}; } setState(patch) { Object.assign(this.state, patch); try { window.localStorage.setItem('pelotonReportUi', JSON.stringify({ page: this.state.page, f: this.state.f, instQ: this.state.instQ, badgeView: this.state.badgeView, badgePage: this.state.badgePage, mode: this.state.mode, year: this.state.year, month: this.state.month, day: this.state.day, sortTop: this.state.sortTop, sortL: this.state.sortL })); } catch (err) {} } }

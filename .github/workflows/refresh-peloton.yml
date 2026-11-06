@@ -99,12 +99,43 @@ jobs:
 
       - name: Build runtime-only report
         run: |
+          node scripts/compile-report.mjs docs/index.html docs/index.html
           if grep -q "unsafe-eval" docs/index.html; then
-            echo "::error::Report still contains unsafe-eval"
+            echo "::error::Generated report still contains unsafe-eval"
             exit 1
           fi
-          test -s docs/index.html
-          test -s docs/vendor/vue.global.prod.js
+          if grep -q "<script>" docs/index.html || grep -q "<style>" docs/index.html; then
+            echo "::error::Generated report still contains inline script or style blocks"
+            exit 1
+          fi
+          if grep -q "vue.global.prod.js" docs/index.html; then
+            echo "::error::Generated report still references the compiler-including Vue build"
+            exit 1
+          fi
+          if ! grep -q 'vendor/vue.runtime.global.prod.js' docs/index.html; then
+            echo "::error::Generated report does not reference the Vue runtime"
+            exit 1
+          fi
+          if ! grep -q 'report-app.js' docs/index.html || [ ! -s docs/report-app.js ] || [ ! -s docs/report.css ]; then
+            echo "::error::Generated report assets are missing"
+            exit 1
+          fi
+
+      - name: Version published report assets
+        env:
+          ASSET_VERSION: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          path = Path("docs/index.html")
+          text = path.read_text(encoding="utf-8")
+          version = os.environ["ASSET_VERSION"][:12]
+          text = text.replace('src="report-app.js"', f'src="report-app.js?v={version}"')
+          text = text.replace('href="report.css"', f'href="report.css?v={version}"')
+          path.write_text(text, encoding="utf-8")
+          PY
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

@@ -47,9 +47,15 @@ jobs:
           fi
 
       - name: Fetch from Peloton
+        id: fetch
+        continue-on-error: true
         env:
           PELOTON_TOKEN: ${{ secrets.PELOTON_TOKEN }}
         run: python collector/peloton_collector.py --out docs/data/peloton_data.json
+
+      - name: Report Peloton fetch status
+        if: steps.fetch.outcome == 'failure'
+        run: echo "::warning::Peloton data refresh failed; publishing the last known-good data. Renew the PELOTON_TOKEN Actions secret."
 
       - name: Commit updated data
         id: commit

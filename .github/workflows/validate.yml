@@ -40,7 +40,9 @@ jobs:
           node scripts/compile-report.mjs docs/index.html work/index.html
           if grep -q "unsafe-eval" work/index.html; then exit 1; fi
           if grep -q "vue.global.prod.js" work/index.html; then exit 1; fi
-          grep -Eq "var Vue[[:space:]]*=" work/index.html
+          test -s work/index.html
+          test -s work/report-app.js
+          test -s work/report.css
 
       - name: Print CSP script hash
         run: |

@@ -478,8 +478,9 @@ Component.prototype.fetchLive = async function (quiet) {
     if (panel.innerHTML !== markup) panel.innerHTML = markup;
   };
   const enhanceAll = () => { alignBadgePager(); enhanceDashboard(); };
-  new MutationObserver(enhanceAll).observe(document.querySelector('#app'), { childList: true, subtree: true, characterData: true });
-  setTimeout(enhanceAll, 0);
+  enhanceAll();
+  let enhancementTicks = 0;
+  const enhancementTimer = window.setInterval(() => { enhanceAll(); if (++enhancementTicks > 30) window.clearInterval(enhancementTimer); }, 1000);
 })();
 </script>
 </body>

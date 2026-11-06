@@ -45,7 +45,6 @@ jobs:
       - name: Print CSP script hash
         run: |
           python - <<'PY'
-          import base64, hashlib, re
           from pathlib import Path
           html = Path('work/index.html').read_text(encoding='utf-8')
           scripts = [m.group(1) for m in re.finditer(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>', html, re.I) if m.group(1)]
@@ -77,3 +76,4 @@ jobs:
 
       - name: Check patch whitespace
         run: git diff --check
+

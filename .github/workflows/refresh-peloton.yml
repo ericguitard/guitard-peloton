@@ -150,7 +150,12 @@ jobs:
               raise SystemExit(0)
 
           site = os.environ["SITE_URL"]
-          urls = [site, urljoin(site, "data/peloton_data.json")]
+          urls = [
+              site,
+              urljoin(site, "data/peloton_data.json"),
+              urljoin(site, "report-app.js"),
+              urljoin(site, "report.css"),
+          ]
           endpoint = "https://api.cloudflare.com/client/v4/zones/{}/purge_cache".format(zone_id)
           request = urllib.request.Request(endpoint, data=json.dumps({"files": urls}).encode(), headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"}, method="POST")
           try:

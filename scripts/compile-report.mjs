@@ -30,14 +30,12 @@ if (!appMatch) throw new Error("Compiled report script was not found");
 const outputDir = path.dirname(output);
 const appPath = path.join(outputDir, "report-app.js");
 fs.writeFileSync(appPath, appMatch[1] + "\n");
-const nonce = (appMatch[0].match(/nonce=\"([^\"]+)\"/) || [])[1] || "";
-const externalApp = externalRuntime.replace(appMatch[0], `<script nonce=\"${nonce}\">${appMatch[1]}</script>`);
+const externalApp = externalRuntime.replace(appMatch[0], "<script src=\"report-app.js\"></script>");
 const styleMatch = externalApp.match(/<style>\r?\n([\s\S]*?)\r?\n<\/style>/);
 if (!styleMatch) throw new Error("Report stylesheet was not found");
 const cssPath = path.join(outputDir, "report.css");
 fs.writeFileSync(cssPath, styleMatch[1] + "\n");
-const inlineRuntime = `<script nonce=\"${nonce}\">${runtimeSource}</script>`;
 const runtimeTag = `<script src=\"${runtimeOnly}\"></script>`;
-const externalAssets = externalApp.replace(runtimeTag, inlineRuntime).replace(styleMatch[0], "<link rel=\"stylesheet\" href=\"report.css\">");
+const externalAssets = externalApp.replace(styleMatch[0], "<link rel=\"stylesheet\" href=\"report.css\">");
 fs.writeFileSync(output, externalAssets);
 

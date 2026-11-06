@@ -47,9 +47,15 @@ jobs:
           fi
 
       - name: Fetch from Peloton
+        id: fetch
+        continue-on-error: true
         env:
           PELOTON_TOKEN: ${{ secrets.PELOTON_TOKEN }}
         run: python collector/peloton_collector.py --out docs/data/peloton_data.json
+
+      - name: Report Peloton fetch status
+        if: steps.fetch.outcome == 'failure'
+        run: echo "::warning::Peloton data refresh failed; publishing the last known-good data. Renew the PELOTON_TOKEN Actions secret."
 
       - name: Commit updated data
         id: commit
@@ -102,6 +108,10 @@ jobs:
             echo "::error::Generated report still references the compiler-including Vue build"
             exit 1
           fi
+          if ! grep -q "var Vue=" docs/index.html; then
+            echo "::error::Generated report does not contain the self-contained Vue runtime"
+            exit 1
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
@@ -139,9 +149,11 @@ jobs:
               with urllib.request.urlopen(request, timeout=30) as response:
                   result = json.load(response)
           except urllib.error.HTTPError as error:
-              raise SystemExit("Cloudflare cache purge failed (HTTP {})".format(error.code))
+              print("::warning::Cloudflare cache purge failed (HTTP {}); continuing because the Pages deployment already succeeded.".format(error.code))
+              raise SystemExit(0)
           if result.get("success") is not True:
-              raise SystemExit("Cloudflare rejected the cache purge request")
+              print("::warning::Cloudflare rejected the cache purge request; continuing because the Pages deployment already succeeded.")
+              raise SystemExit(0)
           print("Purged the report page and Peloton data JSON from Cloudflare.")
           PY
 

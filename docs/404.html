@@ -1,47 +1,5 @@
-<!doctype html>
-<html lang="en-CA">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rest Day — @EricGuitard</title>
-  <meta name="description" content="The requested workout report page could not be found.">
-  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
-  <meta name="author" content="Eric Guitard">
-  <link rel="icon" href="https://assets.guitard.ca/favicon.ico" sizes="any">
-  <link rel="icon" type="image/svg+xml" href="https://assets.guitard.ca/favicon.svg">
-  <link rel="stylesheet" href="./404.css?v=20261106">
-  <style>
-    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1c1b1a; background: #ff7918; }
-    * { box-sizing: border-box; }
-    html, body { min-height: 100%; }
-    body { margin: 0; background: #ff7918; }
-    .rest-day { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; width: min(100%, 1320px); margin: 0 auto; padding: clamp(28px, 6vw, 84px); overflow: hidden; }
-    .rest-day__content { position: relative; z-index: 1; width: min(100%, 680px); text-align: center; }
-    .rest-day__eyebrow { margin: 0 0 18px; font-size: clamp(30px, 5vw, 58px); font-weight: 950; letter-spacing: .08em; line-height: .85; }
-    h1 { margin: 0; font-size: clamp(46px, 8vw, 108px); font-weight: 950; line-height: .82; letter-spacing: -.09em; }
-    h1 span { display: block; margin-top: 18px; font-size: clamp(28px, 4vw, 54px); line-height: .95; letter-spacing: -.05em; }
-    .rest-day__message { max-width: 520px; margin: 30px auto 0; font-size: 17px; font-weight: 600; line-height: 1.5; }
-    .rest-day__button { display: inline-flex; align-items: center; min-height: 50px; margin-top: 30px; padding: 0 22px; border-radius: 999px; background: #1c1b1a; color: #fff; font-size: 14px; font-weight: 800; text-decoration: none; }
-    .rest-day__button:hover { background: #3a3735; }
-    .rest-day__button:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
-    .rest-day__art { position: relative; display: grid; place-items: center; width: min(100%, 900px); min-height: 300px; }
-    .rest-day__art::before { display: none; }
-    .rest-day__art img { position: relative; z-index: 1; display: block; width: min(100%, 680px); height: auto; }
-    .rest-day__code { position: absolute; right: 2%; bottom: -4%; margin: 0; color: rgba(28, 27, 26, .16); font-size: clamp(120px, 18vw, 260px); font-weight: 950; line-height: .75; letter-spacing: -.14em; }
-    @media (max-width: 820px) { .rest-day { padding: 42px 24px 28px; } .rest-day__art { min-height: 270px; } .rest-day__art::before { width: min(72vw, 420px); } .rest-day__art img { width: min(100%, 560px); } }
-  </style>
-</head>
-<body>
-  <main class="rest-day" aria-labelledby="page-title">
-    <div class="rest-day__content">
-      <p class="rest-day__eyebrow">404</p>
-      <h1 id="page-title">Rest Day</h1>
-      <p class="rest-day__message">The report took an unexpected recovery break. The workout page you requested is not available.</p>
-      <div class="rest-day__art">
-        <img src="assets/rest-day-barbell.svg?v=20261106-transparent" alt="Illustrated barbell" width="596" height="308">
-      </div>
-      <a class="rest-day__button" href="/">Return to Workout Report</a>
-    </div>
-  </main>
-</body>
-</html>
+Get-Content: 
+Line |
+   2 |  Get-Content -Raw -LiteralPath 'docs/404.html'
+     |  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Cannot find path 'docs/404.html' because it does not exist.

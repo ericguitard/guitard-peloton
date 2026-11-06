@@ -42,17 +42,13 @@ jobs:
           if grep -q "vue.global.prod.js" work/index.html; then exit 1; fi
           grep -q "var Vue=" work/index.html
 
-      - name: Print CSP script hash
+      - name: Validate external report assets
         run: |
           python - <<'PY'
-          import base64, hashlib, re
           from pathlib import Path
           html = Path('work/index.html').read_text(encoding='utf-8')
-          scripts = [m.group(1) for m in re.finditer(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>', html, re.I) if m.group(1)]
-          if not scripts: raise SystemExit('expected at least one inline script')
-          for script in scripts:
-              digest = hashlib.sha256(script.encode()).digest()
-              print('CSP script hash: sha256-' + base64.b64encode(digest).decode())
+          if '<script>' in html or '<style>' in html: raise SystemExit('inline executable content remains')
+          print('report JavaScript and CSS are same-origin external assets')
           PY
 
       - name: Validate report and data

@@ -101,7 +101,6 @@ const ACTIVE_CHALLENGES = [
 { n: 'November 2026 Meditation Challenge', d: 'Complete 5+ meditations in November.', u: 'https://members.onepeloton.com/en-CA/challenges/active/c552f62b1e064d0da05b078dd022b6dd', tiers: [[5, '5'], [10, '10'], [15, '15']], unit: 'workouts' },
 { n: 'November 2026 Pilates Challenge', d: 'Complete 5+ Pilates classes in November.', u: 'https://members.onepeloton.com/en-CA/challenges/active/79cfe8b5da284189b25e5e52369e6c44', tiers: [[5, '5'], [10, '10'], [15, '15']], unit: 'workouts' },
 { n: 'November 2026 Rep Goal Challenge', d: 'Complete 1,500+ reps in November.', u: 'https://members.onepeloton.com/en-CA/challenges/active/ec9f545678384d5e879484a69e0fce9d', tiers: [[1500, '1,500'], [2000, '2,000'], [2500, '2,500']], unit: 'reps' },
-{ n: 'November 2026 Rowing Challenge', d: 'Row 20,000+ meters in November.', u: 'https://members.onepeloton.com/en-CA/challenges/active/ccb7de4229624c52b1cd66012087cb93', tiers: [[20000, '20,000'], [50000, '50,000'], [80000, '80,000']], unit: 'm' },
 { n: 'November 2026 Running and Walking Challenge', d: 'Run or walk 16.0+ km in November.', u: 'https://members.onepeloton.com/en-CA/challenges/active/ab6804753e5d4b44ae1ba2d347069f20', tiers: [[16.0, '16.0'], [40.2, '40.2'], [64.3, '64.3']], unit: 'km' },
 { n: 'November 2026 Strength Challenge', d: 'Complete 5+ Strength workouts in November.', u: 'https://members.onepeloton.com/en-CA/challenges/active/f211b8818fe54afa95049eceb98ba340', tiers: [[5, '5'], [10, '10'], [15, '15']], unit: 'workouts' },
 { n: 'November 2026 Yoga Challenge', d: 'Take 5+ Yoga classes in November.', u: 'https://members.onepeloton.com/en-CA/challenges/active/eadd87ebb4ec4e12912d2283e2ea6225', tiers: [[5, '5'], [10, '10'], [15, '15']], unit: 'workouts' },
@@ -182,7 +181,8 @@ const challengeRows = ACTIVE_CHALLENGES.map((c) => {
   const value = num(current, precision);
   const tierText = tiers.length === 1 ? 'Gold ' + tiers[0][1] + ' ' + unit : 'Bronze ' + tiers[0][1] + ' · Silver ' + tiers[1][1] + ' · Gold ' + tiers[2][1] + ' ' + unit;
   const status = !available ? 'Status unavailable from workout export' : (achieved >= tiers.length ? 'Gold achieved' : ('Next: ' + (next ? (achieved === 0 ? 'Bronze' : achieved === 1 ? 'Silver' : 'Gold') + ' at ' + next[1] + ' ' + unit : 'Gold')));
-  return Object.assign({}, c, { status: value + ' ' + unit + ' · ' + status + ' · ' + tierText, tierText, pct: lastTier ? Math.min(100, Math.round(current * 100 / lastTier[0])) : 0 });
+  const gold = lastTier ? lastTier[1] + ' ' + unit : '—';
+  return Object.assign({}, c, { status: 'Current: ' + value + ' ' + unit + ' · Gold: ' + gold, tierText, pct: lastTier ? Math.min(100, Math.round(current * 100 / lastTier[0])) : 0 });
 });
 const chips = [];
 if (F.p) chips.push({ label: 'Period: ' + F.p[2], clear: () => setF({ p: null }) });
@@ -434,6 +434,22 @@ Component.prototype.fetchLive = async function (quiet) {
       return out;
     }
   }).mount('#app');
+  const alignBadgePager = () => {
+    const heading = [...document.querySelectorAll('h3')].find((el) => el.textContent.includes('Special event badges'));
+    if (!heading) return;
+    const section = heading.closest('section');
+    const titleRow = heading.parentElement?.parentElement;
+    const pageText = [...section.querySelectorAll('*')].find((el) => /^Calendar year \d{4} · page \d+ of \d+$/.test(el.textContent.trim()) && el.children.length === 0);
+    const buttons = [...section.querySelectorAll('button')].filter((el) => el.textContent.trim() === 'Previous' || el.textContent.trim() === 'Next');
+    if (!titleRow || !pageText || buttons.length !== 2) return;
+    if (/^Calendar year \d{4} · /.test(pageText.textContent.trim())) pageText.textContent = pageText.textContent.replace(/^Calendar year \d{4} · /, '');
+    let pager = titleRow.querySelector('[data-badge-pager]');
+    if (!pager) { pager = document.createElement('div'); pager.dataset.badgePager = 'true'; pager.style.cssText = 'display:flex;align-items:center;gap:8px;margin-left:auto;'; titleRow.appendChild(pager); }
+    if (pageText.parentElement !== pager) pager.appendChild(pageText);
+    buttons.forEach((button) => { if (button.parentElement !== pager) pager.appendChild(button); });
+  };
+  new MutationObserver(alignBadgePager).observe(document.querySelector('#app'), { childList: true, subtree: true, characterData: true });
+  setTimeout(alignBadgePager, 0);
 })();
 </script>
 </body>

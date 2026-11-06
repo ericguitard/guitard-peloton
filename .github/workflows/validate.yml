@@ -43,6 +43,7 @@ jobs:
           test -s work/index.html
           test -s work/report-app.js
           test -s work/report.css
+          node -e "const fs=require('fs'),vm=require('vm');try{new vm.Script(fs.readFileSync('work/report-app.js','utf8'))}catch(e){console.error(e.stack);process.exit(1)}"
 
       - name: Print CSP script hash
         run: |

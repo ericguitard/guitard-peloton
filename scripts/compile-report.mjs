@@ -93,7 +93,9 @@ if (calStart < 0 || calEnd <= calStart || chartStart < 0 || chartEnd <= chartSta
 }
 const calendarBlock = activityRow.slice(calStart, calEnd)
   .replace('flex: 1 1 320px;', 'flex: 1 1 320px;')
-  .replace('padding: 20px;', 'padding: 14px;');
+  .replace('padding: 20px;', 'padding: 12px;')
+  .replace('grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;', 'grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px;')
+  .replace('padding-top: 8px;', 'padding-top: 6px;');
 const monthlyBlock = activityRow.slice(chartStart, chartEnd)
   .replace('flex: 3 1 600px;', 'flex: 3 1 600px;')
   .replace('padding: 20px;', 'padding: 14px;')
@@ -104,7 +106,7 @@ const heatBlock = template.slice(heatStart, heatEnd)
   .replace('padding: 20px;', 'padding: 14px;')
   .replace('min-width: 820px;', 'min-width: 820px;')
   .replace(/<div style="display: flex; gap: 10px; align-items: baseline">[\s\S]*?<\/div>\n<svg :viewBox/, '<svg :viewBox');
-const activityHeatRow = '<div style="display: flex; flex-wrap: wrap; gap: 14px">' + calendarBlock + monthlyBlock + '</div>\n' + heatBlock;
+const activityHeatRow = '<div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px">' + calendarBlock + monthlyBlock + '</div>\n' + heatBlock;
 template = template.slice(0, activityRowStart) + activityHeatRow + template.slice(heatEnd);
 
 // Keep the Annual challenge with the rest of the achievement and challenge

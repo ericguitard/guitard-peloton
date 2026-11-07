@@ -88,6 +88,20 @@ const challengeHeadingIndex = template.indexOf(challengeHeading);
 const challengeSectionStart = template.lastIndexOf('<section', challengeHeadingIndex);
 if (challengeHeadingIndex < 0 || challengeSectionStart < 0) throw new Error("Active challenge section was not found");
 template = template.slice(0, challengeSectionStart) + annualBlock + '\n' + template.slice(challengeSectionStart);
+
+// The Overview already exposes the underlying streak and achievement data in
+// the other cards, so omit its redundant recent-achievements panel. Keep the
+// corresponding Achievements panel intact.
+const overviewRecentMarker = 'Milestones, streaks and the Annual';
+const overviewRecentIndex = template.indexOf(overviewRecentMarker);
+const overviewRecentStart = template.lastIndexOf('<section', overviewRecentIndex);
+const overviewRecentEnd = template.indexOf('</section>', overviewRecentIndex) + '</section>'.length;
+if (overviewRecentIndex < 0 || overviewRecentStart < 0 || overviewRecentEnd <= overviewRecentStart) {
+  throw new Error("Overview recent-achievements panel was not found");
+}
+template = template.slice(0, overviewRecentStart) + template.slice(overviewRecentEnd);
+
+template = template.replace('>Top workouts<', '>Latest workouts<');
 const compiled = compile(template, { mode: "function", prefixIdentifiers: false });
 const render = "(function(){" + compiled.code + "})()";
 const result = source.slice(0, start) + "    render: " + render + source.slice(valueEnd + 1);

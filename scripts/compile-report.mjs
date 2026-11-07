@@ -23,6 +23,7 @@ const transforms = [
   ["[['overview', 'Overview'], ['ach', 'Achievements'], ['log', 'Workout Log']]", "[['overview', 'Overview'], ['ach', 'Achievements']]"] ,
   ["isOverview: st.page === 'overview', isDisc: false, isInst: false, isAch: st.page === 'ach', isLog: st.page === 'log',", "isOverview: st.page === 'overview', isDisc: false, isInst: false, isAch: st.page === 'ach', isLog: false,"],
   ["const hasF = dSel.length > 0 || iSel.length > 0 || F.t >= 0 || F.l >= 0 || !!F.p;", "const hasF = dSel.length > 0 || iSel.length > 0 || F.t >= 0 || F.l >= 0 || !!F.p || !!F.q;"],
+  ["chartTitle = st.mode === 'month' ? 'Minutes per day · ' + st.year : 'Minutes per month · ' + annY;", "chartTitle = st.mode === 'month' ? 'Minutes per day · ' + st.year : 'Minutes per month';"],
   ["(skip === 'd' || dSel.length === 0 || dSel.includes(r[1])) && (skip === 'i' || iSel.length === 0 || iSel.includes(r[2]))", "(skip === 'd' || dSel.length === 0 || dSel.includes(r[1])) && (skip === 'i' || iSel.length === 0 || iSel.includes(r[2])) && (skip === 'q' || !F.q || (() => { const t = r[10]; if (t === undefined || t < 0) return false; const m = t < 300 ? t + 1440 : t; return m >= F.q[0] && m < F.q[1]; })())"],
   ["clearAll: () => setF({ d: -1, i: -1, ds: [], is: [], t: -1, l: -1, p: null })", "clearAll: () => setF({ d: -1, i: -1, ds: [], is: [], t: -1, l: -1, p: null, q: null })"],
   ["const TOD = [['Early morning', 300, 480], ['Morning', 480, 720], ['Afternoon', 720, 1020], ['Evening', 1020, 1260], ['Night', 1260, 1740]];", "const TOD = [['Early', 300, 480], ['Morning', 480, 720], ['Afternoon', 720, 1020], ['Evening', 1020, 1260], ['Late', 1260, 1740]];"],
@@ -66,6 +67,43 @@ const valueEnd = (() => {
 })();
 if (valueEnd < 0) throw new Error("Vue template terminator was not found");
 let template = JSON.parse(String.fromCharCode(34) + source.slice(valueStart, valueEnd) + String.fromCharCode(34));
+
+// Put the compact 30-day activity card beside the daily heatmap, while keeping
+// the minutes-per-month chart on its own row so the primary activity controls
+// read as one focused dashboard block on desktop and stack cleanly on mobile.
+const calTitleIndex = template.indexOf('{{calTitle}}');
+const activityRowStart = template.lastIndexOf('<div style="display: flex; flex-wrap: wrap; gap: 14px">', calTitleIndex);
+const activityRowEndToken = '</svg></section></div>';
+const activityRowEnd = template.indexOf(activityRowEndToken, calTitleIndex) + activityRowEndToken.length;
+const heatTitleIndex = template.indexOf('{{heatTitle}}', activityRowEnd);
+const heatStart = template.lastIndexOf('<section', heatTitleIndex);
+const heatEndMarker = '\n<div style="display: flex; flex-wrap: wrap; gap: 14px">\n<section style="flex: 1 1 290px;';
+const heatEnd = template.indexOf(heatEndMarker, heatStart);
+if (calTitleIndex < 0 || activityRowStart < 0 || activityRowEnd <= activityRowStart || heatTitleIndex < 0 || heatStart < 0 || heatEnd <= heatStart) {
+  throw new Error('Activity chart layout boundaries were not found');
+}
+const activityRow = template.slice(activityRowStart, activityRowEnd);
+const calStart = activityRow.indexOf('<section');
+const calEnd = activityRow.indexOf('</section>', calStart) + '</section>'.length;
+const chartStart = activityRow.indexOf('<section', calEnd);
+const chartEnd = activityRow.lastIndexOf('</section>') + '</section>'.length;
+if (calStart < 0 || calEnd <= calStart || chartStart < 0 || chartEnd <= chartStart) {
+  throw new Error('Activity and monthly chart sections were not found');
+}
+const calendarBlock = activityRow.slice(calStart, calEnd)
+  .replace('flex: 1 1 320px;', 'flex: 1 1 320px;')
+  .replace('padding: 20px;', 'padding: 14px;');
+const monthlyBlock = activityRow.slice(chartStart, chartEnd)
+  .replace('flex: 3 1 600px;', 'flex: 1 1 100%;')
+  .replace('padding: 20px;', 'padding: 14px;')
+  .replace('gap: 12px; box-sizing: border-box', 'gap: 8px; box-sizing: border-box')
+  .replace('style="display: block"', 'style="display: block; max-height: 190px"');
+const heatBlock = template.slice(heatStart, heatEnd)
+  .replace('flex-direction: column; gap: 12px; box-sizing: border-box', 'flex-direction: column; gap: 8px; box-sizing: border-box; flex: 2 1 620px; min-width: 0')
+  .replace('padding: 20px;', 'padding: 14px;')
+  .replace('min-width: 820px;', 'min-width: 0;');
+const activityHeatRow = '<div style="display: flex; flex-wrap: wrap; gap: 14px">' + calendarBlock + heatBlock + '</div>\n' + monthlyBlock;
+template = template.slice(0, activityRowStart) + activityHeatRow + template.slice(heatEnd);
 
 // Keep the Annual challenge with the rest of the achievement and challenge
 // context. It used to be rendered twice (Overview and Achievements), which

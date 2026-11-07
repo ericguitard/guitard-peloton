@@ -54,7 +54,40 @@ const valueEnd = (() => {
   return source.indexOf(crlfMarker, valueStart);
 })();
 if (valueEnd < 0) throw new Error("Vue template terminator was not found");
-const template = JSON.parse(String.fromCharCode(34) + source.slice(valueStart, valueEnd) + String.fromCharCode(34));
+let template = JSON.parse(String.fromCharCode(34) + source.slice(valueStart, valueEnd) + String.fromCharCode(34));
+
+// Keep the Annual challenge with the rest of the achievement and challenge
+// context. It used to be rendered twice (Overview and Achievements), which
+// made the Overview feel crowded and left the Achievements section out of
+// sequence. Extract the Overview card, remove the old Achievements copy, and
+// insert one copy immediately before the live challenge catalogue.
+const annualHeading = 'The Annual {{annual.year}} · 20,000 minutes';
+const firstAnnualHeading = template.indexOf(annualHeading);
+if (firstAnnualHeading < 0) throw new Error("Annual challenge heading was not found");
+const overviewStart = template.lastIndexOf('<template v-if="isOverview">', firstAnnualHeading);
+const overviewSectionStart = template.indexOf('<section', overviewStart);
+const overviewSectionEnd = template.indexOf('</section>', overviewSectionStart);
+const overviewEnd = template.indexOf('</section></template>', overviewSectionEnd) + '</section></template>'.length;
+if (overviewStart < 0 || overviewSectionStart < 0 || overviewSectionEnd < 0 || overviewEnd < overviewSectionEnd) {
+  throw new Error("Overview Annual card boundaries were not found");
+}
+const annualBlock = template.slice(overviewSectionStart, overviewSectionEnd + '</section>'.length);
+template = template.slice(0, overviewStart) + template.slice(overviewEnd);
+
+const remainingAnnualHeading = template.indexOf(annualHeading);
+if (remainingAnnualHeading < 0) throw new Error("Achievements Annual card was not found");
+const achievementsAnnualStart = template.lastIndexOf('<section', remainingAnnualHeading);
+const achievementsAnnualEnd = template.indexOf('</section>', remainingAnnualHeading) + '</section>'.length;
+if (achievementsAnnualStart < 0 || achievementsAnnualEnd <= achievementsAnnualStart) {
+  throw new Error("Achievements Annual card boundaries were not found");
+}
+template = template.slice(0, achievementsAnnualStart) + template.slice(achievementsAnnualEnd);
+
+const challengeHeading = 'Current monthly &amp; active challenges';
+const challengeHeadingIndex = template.indexOf(challengeHeading);
+const challengeSectionStart = template.lastIndexOf('<section', challengeHeadingIndex);
+if (challengeHeadingIndex < 0 || challengeSectionStart < 0) throw new Error("Active challenge section was not found");
+template = template.slice(0, challengeSectionStart) + annualBlock + '\n' + template.slice(challengeSectionStart);
 const compiled = compile(template, { mode: "function", prefixIdentifiers: false });
 const render = "(function(){" + compiled.code + "})()";
 const result = source.slice(0, start) + "    render: " + render + source.slice(valueEnd + 1);

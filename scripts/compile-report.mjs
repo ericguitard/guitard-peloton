@@ -101,6 +101,36 @@ if (overviewRecentIndex < 0 || overviewRecentStart < 0 || overviewRecentEnd <= o
 }
 template = template.slice(0, overviewRecentStart) + template.slice(overviewRecentEnd);
 
+const milestoneStart = template.indexOf('<template v-if="oneDisc">');
+const milestoneEnd = template.indexOf('</template>', milestoneStart) + '</template>'.length;
+if (milestoneStart < 0 || milestoneEnd <= milestoneStart) {
+  throw new Error("Class length milestones panel was not found");
+}
+template = template.slice(0, milestoneStart) + template.slice(milestoneEnd);
+
+// Stack Workout time preference under Class length in the same column. Move
+// both the populated and empty states together so the layout stays consistent
+// when class start-time data is unavailable.
+const timeStart = template.indexOf('<template v-if="hasTimes">');
+const noTimeStart = template.indexOf('<template v-if="noTimes">', timeStart);
+const timeEnd = template.indexOf('</section></template>', noTimeStart) + '</section></template>'.length;
+if (timeStart < 0 || noTimeStart < 0 || timeEnd <= noTimeStart) {
+  throw new Error("Workout time preference panels were not found");
+}
+const timeBlock = template.slice(timeStart, timeEnd);
+template = template.slice(0, timeStart) + template.slice(timeEnd);
+
+const classHeading = '<h3 style="margin: 0; font-size: 16px; font-weight: 600">Class length</h3>';
+const classHeadingIndex = template.indexOf(classHeading);
+const classSectionStart = template.lastIndexOf('<section', classHeadingIndex);
+const classSectionEnd = template.indexOf('</section>', classHeadingIndex) + '</section>'.length;
+if (classHeadingIndex < 0 || classSectionStart < 0 || classSectionEnd <= classSectionStart) {
+  throw new Error("Class length panel was not found");
+}
+const classSection = template.slice(classSectionStart, classSectionEnd);
+const stackedClassColumn = '<div style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 14px">' + classSection + timeBlock + '</div>';
+template = template.slice(0, classSectionStart) + stackedClassColumn + template.slice(classSectionEnd);
+
 template = template.replace('>Top workouts<', '>Latest workouts<');
 const compiled = compile(template, { mode: "function", prefixIdentifiers: false });
 const render = "(function(){" + compiled.code + "})()";

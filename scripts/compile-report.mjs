@@ -37,6 +37,7 @@ const transforms = [
   ["discVal: String(F.d), discOpts: discOpts, onDisc: (ev) => setF({ d: +ev.target.value }),", "discVal: dSel.length === DISC.length ? ['-1'] : dSel.map(String), discOpts: discOpts, onDisc: (ev) => { const v = +ev.target.value; if (v < 0) return setF({ ds: DISC.map((_, i) => i) }); const vals = dSel.includes(v) ? dSel.filter((x) => x !== v) : dSel.concat(v); setF({ ds: vals }); },"],
   ["instVal: String(F.i), instOpts: instOpts, onInst: (ev) => setF({ i: +ev.target.value }),", "instVal: iSel.length === instAll.length ? ['-1'] : iSel.map(String), instOpts: instOpts, onInst: (ev) => { const v = +ev.target.value; if (v < 0) return setF({ is: instAll.map(([i]) => i) }); const vals = iSel.includes(v) ? iSel.filter((x) => x !== v) : iSel.concat(v); setF({ is: vals }); }, discOpen: st.discOpen, instOpen: st.instOpen, discQ: st.discQ || '', instQFilter: st.instQFilter || '', toggleDiscMenu: () => this.setState({ discOpen: !st.discOpen, instOpen: false }), toggleInstMenu: () => this.setState({ instOpen: !st.instOpen, discOpen: false }), onDiscQ: (ev) => this.setState({ discQ: ev.target.value }), onInstFilterQ: (ev) => this.setState({ instQFilter: ev.target.value }), clearDiscFilter: () => setF({ d: -1, ds: [] }), clearInstFilter: () => setF({ i: -1, is: [] }), discLabel: dSel.length ? (dSel.length === 1 ? DISC[dSel[0]] : dSel.length + ' selected') : 'All disciplines', instLabel: iSel.length ? (iSel.length === 1 ? INST[iSel[0]] : iSel.length + ' selected') : 'All instructors (' + instAll.length + ')', onDiscOption: (v) => { const n = +v; const vals = dSel.includes(n) ? dSel.filter((x) => x !== n) : dSel.concat(n); setF({ ds: vals }); }, onInstOption: (v) => { const n = +v; const vals = iSel.includes(n) ? iSel.filter((x) => x !== n) : iSel.concat(n); setF({ is: vals }); },"],
   ["\"discVal\", \"discOpts\", \"onDisc\", \"instVal\", \"instOpts\", \"onInst\",", "\"discVal\", \"discOpts\", \"onDisc\", \"instVal\", \"instOpts\", \"onInst\", \"discOpen\", \"instOpen\", \"discQ\", \"instQFilter\", \"toggleDiscMenu\", \"toggleInstMenu\", \"onDiscQ\", \"onInstFilterQ\", \"clearDiscFilter\", \"clearInstFilter\", \"discLabel\", \"instLabel\", \"onDiscOption\", \"onInstOption\", "],
+  ["\"chartTitle\", \"chartHint\",", "\"chartTitle\", \"chartHint\", \"avgY\", \"avgMins\", \"avgLabel\", "],
   ["<template v-if=\\\"isInst\\\"><div style=\\\"display: flex; flex-direction: column; gap: 4px\\\"><label for=\\\"f-inst\\\"", "<template v-if=\\\"isOverview\\\"><div style=\\\"display: flex; flex-direction: column; gap: 4px\\\"><label for=\\\"f-inst\\\""],
   ["<select id=\\\"f-disc\\\" :value=\\\"discVal\\\" @change=\\\"onDisc\\\"", "<select id=\\\"f-disc\\\" multiple size=\\\"1\\\" :value=\\\"discVal\\\" @change=\\\"onDisc\\\""],
   ["<select id=\\\"f-inst\\\" :value=\\\"instVal\\\" @change=\\\"onInst\\\"", "<select id=\\\"f-inst\\\" multiple size=\\\"1\\\" :value=\\\"instVal\\\" @change=\\\"onInst\\\""],
@@ -92,15 +93,15 @@ if (calStart < 0 || calEnd <= calStart || chartStart < 0 || chartEnd <= chartSta
   throw new Error('Activity and monthly chart sections were not found');
 }
 const calendarBlock = activityRow.slice(calStart, calEnd)
-  .replace('flex: 1 1 320px;', 'flex: 1 1 320px;')
-  .replace('padding: 20px;', 'padding: 12px;')
-  .replace('grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;', 'grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px;')
-  .replace('padding-top: 8px;', 'padding-top: 6px;');
+  .replace('flex: 1 1 320px;', 'flex: 0 1 300px; max-width: 320px;')
+  .replace('padding: 20px;', 'padding: 8px;')
+  .replace('grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;', 'grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px;')
+  .replace('padding-top: 8px;', 'padding-top: 4px;');
 const monthlyBlock = activityRow.slice(chartStart, chartEnd)
-  .replace('flex: 3 1 600px;', 'flex: 3 1 600px;')
-  .replace('padding: 20px;', 'padding: 14px;')
-  .replace('gap: 12px; box-sizing: border-box', 'gap: 8px; box-sizing: border-box')
-  .replace('style="display: block"', 'style="display: block; max-height: 190px"');
+  .replace('flex: 3 1 600px;', 'flex: 1 1 600px; align-self: flex-start;')
+  .replace('padding: 20px;', 'padding: 12px;')
+  .replace('gap: 12px; box-sizing: border-box', 'gap: 6px; box-sizing: border-box')
+  .replace('style="display: block"', 'style="display: block; height: 220px; max-height: 220px"');
 const heatBlock = template.slice(heatStart, heatEnd)
   .replace('flex-direction: column; gap: 12px; box-sizing: border-box', 'flex-direction: column; gap: 8px; box-sizing: border-box')
   .replace('padding: 20px;', 'padding: 14px;')
@@ -213,6 +214,10 @@ if (latestIndex < 0 || latestStart < 0 || latestEnd <= latestStart) {
 template = template.slice(0, latestStart) + template.slice(latestEnd);
 
 template = template.replace('>Top workouts<', '>Latest workouts<');
+template = template.replace(
+  '<template v-for="(b, b_i) in bars"',
+  '<template v-if="avgY"><line x1="0" x2="1000" :y1="avgY" :y2="avgY" stroke="#3A5A8C" stroke-width="2" stroke-dasharray="8 6"></line><text x="992" :y="avgY - 6" fill="#3A5A8C" font-size="11" text-anchor="end" font-family="Inter, sans-serif">{{avgLabel}}</text></template><template v-for="(b, b_i) in bars"'
+);
 const compiled = compile(template, { mode: "function", prefixIdentifiers: false });
 const render = "(function(){" + compiled.code + "})()";
 const result = source.slice(0, start) + "    render: " + render + source.slice(valueEnd + 1);

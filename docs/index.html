@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Report layout is compiled from scripts/compile-report.mjs during deployment (filter-aware Workout log results, compact activity charts, and time filters enabled). -->
+<!-- Report layout is compiled from scripts/compile-report.mjs during deployment (filter-aware Workout log results, compact activity charts, average minute trend, and time filters enabled). -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -264,7 +264,7 @@ const ey = yearOf(eff), em = dt(eff).getUTCMonth() + 1;
 while (y < ey || (y === ey && m <= em)) { const bs = idx(y, m, 1); buckets.push({ lab: MN[m - 1], full: MFULL[m - 1] + ' ' + y, s: bs, e: idx(m === 12 ? y + 1 : y, m === 12 ? 1 : m + 1, 1) - 1 }); m++; if (m > 12) { m = 1; y++; } }
 } else if (st.mode === 'month') { for (let d = s; d <= e; d++) buckets.push({ lab: String(dt(d).getUTCDate()), full: fd(d), s: d, e: d }); }
 const Hc = 220, top = 18, bot = 26, Wc = 1000;
-let bars = [], xl = [], chartTitle, chartHint;
+let bars = [], xl = [], chartTitle, chartHint, avgY = '', avgMins = 0, avgLabel = '';
 if (st.mode === 'day') {
 chartTitle = 'Workouts on ' + rangeLabel; chartHint = 'Each bar is one workout';
 const gw = Wc / Math.max(RD.length, 6), mx = Math.max(1, ...RD.map((r) => r[4]));
@@ -274,6 +274,9 @@ xl = RD.map((r, i) => ({ x: (i * gw + gw / 2).toFixed(1), t: DISC[r[1]].split(' 
 chartTitle = st.mode === 'month' ? 'Minutes per day · ' + st.year : 'Minutes per month · ' + annY; chartHint = 'Select a bar to filter everything to that ' + (st.mode === 'month' ? 'day' : 'month') + '; select it again to clear';
 const vals = buckets.map((b) => RC.reduce((t, r) => t + (r[0] >= b.s && r[0] <= b.e ? r[4] : 0), 0));
 const mx = Math.max(1, ...vals), n = buckets.length, gw = Wc / Math.max(n, 1), every = n > 24 ? 3 : n > 16 ? 2 : 1;
+avgMins = vals.length ? vals.reduce((t, v) => t + v, 0) / vals.length : 0;
+avgY = avgMins ? (Hc - bot - (Hc - top - bot) * avgMins / mx).toFixed(1) : '';
+avgLabel = avgMins ? Math.round(avgMins) + ' min avg' : '';
 bars = vals.map((v, i) => { const b = buckets[i], h = (Hc - top - bot) * v / mx, sel = F.p && F.p[0] === b.s; return { x: (i * gw + gw * 0.12).toFixed(1), y: (Hc - bot - h).toFixed(1), w: Math.max(gw * 0.76, 1).toFixed(1), h: Math.max(h, v ? 1 : 5).toFixed(1), fill: sel ? C.TXT : (v ? (F.p ? C.FADE : C.ACC) : '#D5D9DF'), tip: b.full + ': ' + (v ? num(v) + ' min' : 'No workouts'), pick: () => setF({ p: sel ? null : [b.s, b.e, b.full] }) }; });
 xl = buckets.map((b, i) => ({ x: (i * gw + gw / 2).toFixed(1), t: (i % every === 0 || b.lab.includes('’')) ? b.lab : '' }));
 }
@@ -386,7 +389,7 @@ discVal: String(F.d), discOpts: discOpts, onDisc: (ev) => setF({ d: +ev.target.v
 instVal: String(F.i), instOpts: instOpts, onInst: (ev) => setF({ i: +ev.target.value }),
 oneDisc: F.d >= 0 && !!msFor, discMs: msFor || ms[0],
 hasRows: RD.length > 0, noRows: RD.length === 0 && st.page !== 'ach' && !(st.page === 'inst' && !instSel), hasPR: prView.length > 0, showPRList: prView.length > 0 && st.page === 'ach', showPRTop: false,
-kpis: kpis, bars: bars, xl: xl, yTicks: yTicks, chartTitle: chartTitle, chartHint: chartHint,
+kpis: kpis, bars: bars, xl: xl, yTicks: yTicks, chartTitle: chartTitle, chartHint: chartHint, avgY: avgY, avgMins: avgMins, avgLabel: avgLabel,
 discRows: discRows, discCount: num(discRows.length), typeRows: typeRows, typeCount: num(typeRows.length), instRowCount: num(instRows.length), instRows: instRows, lenRows: lenRows, topW: topW, topMetric: hasOut ? 'OUTPUT' : 'DISTANCE / CAL',
 cal30: cal30, act30: String(act30), deltaTxt: (delta === 0 ? 'same as' : (delta > 0 ? '▲ ' : '▼ ') + Math.abs(delta) + (Math.abs(delta) === 1 ? ' day vs.' : ' days vs.')) + ' previous 30', calTitle: '30-day activity · ' + fds(calE - 29) + ' – ' + fds(calE),
 ms: ms, recent: recent, recentTitle: inRange.length ? 'Earned in ' + rangeLabel : 'Most recent achievements', prTop: prTop, prView: prView,

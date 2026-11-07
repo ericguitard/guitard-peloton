@@ -131,6 +131,28 @@ const classSection = template.slice(classSectionStart, classSectionEnd);
 const stackedClassColumn = '<div style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 14px">' + classSection + timeBlock + '</div>';
 template = template.slice(0, classSectionStart) + stackedClassColumn + template.slice(classSectionEnd);
 
+// The filtered class table is useful as the detailed result view, not just an
+// instructor drill-down. Keep it visible on Overview so its rows and count
+// respond to every active discipline, class-type, and instructor filter.
+const everyClassOpen = '<template v-if="instSel"><section';
+const everyClassStart = template.indexOf(everyClassOpen);
+if (everyClassStart < 0) throw new Error("Every class panel was not found");
+template = template.replace(everyClassOpen, '<section');
+const everyClassEnd = template.indexOf('</section></template>', everyClassStart);
+if (everyClassEnd < 0) throw new Error("Every class panel terminator was not found");
+template = template.slice(0, everyClassEnd) + '</section>' + template.slice(everyClassEnd + '</section></template>'.length);
+
+// Latest workouts is redundant once the filter-aware Every class table is
+// always present on Overview.
+const latestHeading = '<h3 style="margin: 0; font-size: 16px; font-weight: 600">Top workouts</h3>';
+const latestIndex = template.indexOf(latestHeading);
+const latestStart = template.lastIndexOf('<section', latestIndex);
+const latestEnd = template.indexOf('</section>', latestIndex) + '</section>'.length;
+if (latestIndex < 0 || latestStart < 0 || latestEnd <= latestStart) {
+  throw new Error("Latest workouts panel was not found");
+}
+template = template.slice(0, latestStart) + template.slice(latestEnd);
+
 template = template.replace('>Top workouts<', '>Latest workouts<');
 const compiled = compile(template, { mode: "function", prefixIdentifiers: false });
 const render = "(function(){" + compiled.code + "})()";

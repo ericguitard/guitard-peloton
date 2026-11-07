@@ -24,6 +24,7 @@ const transforms = [
   ["isOverview: st.page === 'overview', isDisc: false, isInst: false, isAch: st.page === 'ach', isLog: st.page === 'log',", "isOverview: st.page === 'overview', isDisc: false, isInst: false, isAch: st.page === 'ach', isLog: false,"],
   ["const hasF = dSel.length > 0 || iSel.length > 0 || F.t >= 0 || F.l >= 0 || !!F.p;", "const hasF = dSel.length > 0 || iSel.length > 0 || F.t >= 0 || F.l >= 0 || !!F.p || !!F.q;"],
   ["chartTitle = st.mode === 'month' ? 'Minutes per day · ' + st.year : 'Minutes per month · ' + annY;", "chartTitle = st.mode === 'month' ? 'Minutes per day · ' + st.year : 'Minutes per month';"],
+  ["const ey = yearOf(eff), em = dt(eff).getUTCMonth() + 1;", "const ey = st.mode === 'year' ? yearOf(s) : yearOf(eff), em = st.mode === 'year' ? 12 : dt(eff).getUTCMonth() + 1;"],
   ["(skip === 'd' || dSel.length === 0 || dSel.includes(r[1])) && (skip === 'i' || iSel.length === 0 || iSel.includes(r[2]))", "(skip === 'd' || dSel.length === 0 || dSel.includes(r[1])) && (skip === 'i' || iSel.length === 0 || iSel.includes(r[2])) && (skip === 'q' || !F.q || (() => { const t = r[10]; if (t === undefined || t < 0) return false; const m = t < 300 ? t + 1440 : t; return m >= F.q[0] && m < F.q[1]; })())"],
   ["clearAll: () => setF({ d: -1, i: -1, ds: [], is: [], t: -1, l: -1, p: null })", "clearAll: () => setF({ d: -1, i: -1, ds: [], is: [], t: -1, l: -1, p: null, q: null })"],
   ["const TOD = [['Early morning', 300, 480], ['Morning', 480, 720], ['Afternoon', 720, 1020], ['Evening', 1020, 1260], ['Night', 1260, 1740]];", "const TOD = [['Early', 300, 480], ['Morning', 480, 720], ['Afternoon', 720, 1020], ['Evening', 1020, 1260], ['Late', 1260, 1740]];"],
@@ -94,15 +95,16 @@ const calendarBlock = activityRow.slice(calStart, calEnd)
   .replace('flex: 1 1 320px;', 'flex: 1 1 320px;')
   .replace('padding: 20px;', 'padding: 14px;');
 const monthlyBlock = activityRow.slice(chartStart, chartEnd)
-  .replace('flex: 3 1 600px;', 'flex: 1 1 100%;')
+  .replace('flex: 3 1 600px;', 'flex: 3 1 600px;')
   .replace('padding: 20px;', 'padding: 14px;')
   .replace('gap: 12px; box-sizing: border-box', 'gap: 8px; box-sizing: border-box')
   .replace('style="display: block"', 'style="display: block; max-height: 190px"');
 const heatBlock = template.slice(heatStart, heatEnd)
-  .replace('flex-direction: column; gap: 12px; box-sizing: border-box', 'flex-direction: column; gap: 8px; box-sizing: border-box; flex: 2 1 620px; min-width: 0')
+  .replace('flex-direction: column; gap: 12px; box-sizing: border-box', 'flex-direction: column; gap: 8px; box-sizing: border-box')
   .replace('padding: 20px;', 'padding: 14px;')
-  .replace('min-width: 820px;', 'min-width: 0;');
-const activityHeatRow = '<div style="display: flex; flex-wrap: wrap; gap: 14px">' + calendarBlock + heatBlock + '</div>\n' + monthlyBlock;
+  .replace('min-width: 820px;', 'min-width: 820px;')
+  .replace(/<div style="display: flex; gap: 10px; align-items: baseline">[\s\S]*?<\/div>\n<svg :viewBox/, '<svg :viewBox');
+const activityHeatRow = '<div style="display: flex; flex-wrap: wrap; gap: 14px">' + calendarBlock + monthlyBlock + '</div>\n' + heatBlock;
 template = template.slice(0, activityRowStart) + activityHeatRow + template.slice(heatEnd);
 
 // Keep the Annual challenge with the rest of the achievement and challenge

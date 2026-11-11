@@ -62,7 +62,19 @@ if (this.state.fetching) return;
 this.setState({ fetching: true, loadMsg: 'Fetching from Peloton…' });
 let mcp = null;
 try { mcp = window.claude && window.claude.use ? await window.claude.use('mcp') : null; } catch (err) { mcp = null; }
-if (!mcp) { this.setState({ fetching: false, loadMsg: 'Live fetch works when this report is open in the Claude desktop app.' }); return; }
+if (!mcp) {
+try {
+const r = await fetch('data/peloton_data.json?ts=' + Date.now(), { cache: 'no-store' });
+if (!r.ok) throw new Error('HTTP ' + r.status);
+const p = await r.json();
+const cv = this.convert(p);
+try { window.localStorage.setItem('pelotonReportData', JSON.stringify(p)); } catch (err) {}
+this.setState({ loaded: cv, fetching: false, loadMsg: 'Loaded the latest published copy · live Peloton updates require the Claude desktop app', f: { d: -1, i: -1, t: -1, l: -1, p: null } });
+} catch (e) {
+this.setState({ fetching: false, loadMsg: 'Couldn’t load the published data: ' + e.message });
+}
+return;
+}
 try {
 const res = await mcp.callTool('host:peloton', 'fetch_peloton_data', {}, { cache: false });
 let p = res && res.payload !== undefined ? res.payload : res;

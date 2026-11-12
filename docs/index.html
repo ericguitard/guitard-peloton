@@ -66,7 +66,10 @@ try {
 const r = await fetch('/api/update', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
 let started = {};
 try { started = await r.json(); } catch (err) {}
-if (!r.ok) throw new Error(started.error || ('HTTP ' + r.status));
+if (!r.ok) {
+if (r.status === 429) throw new Error('An update is already running. Please wait about a minute and try again.');
+throw new Error(started.error || ('HTTP ' + r.status));
+}
 let latestData = null;
 for (let attempt = 0; attempt < 24; attempt++) {
 await new Promise((resolve) => setTimeout(resolve, attempt === 0 ? 2500 : 5000));

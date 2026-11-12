@@ -106,6 +106,7 @@ const calendarBlock = activityRow.slice(calStart, calEnd)
   .replace('grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;', 'grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px;')
   .replace('padding-top: 8px;', 'padding-top: 4px;');
 const monthlyBlock = activityRow.slice(chartStart, chartEnd)
+  .replace('<section ', '<section class="minutes-monthly" ')
   .replace('flex: 3 1 600px;', 'flex: 1 1 600px; align-self: flex-start;')
   .replace('padding: 20px;', 'padding: 12px;')
   .replace('gap: 12px; box-sizing: border-box', 'gap: 6px; box-sizing: border-box')

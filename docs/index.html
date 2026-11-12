@@ -55,45 +55,34 @@ w.push([Math.round((Date.UTC(y, m - 1, d) - BASE) / 864e5), DISC.indexOf(dn), ii
 });
 const badges = {}; (j.badges || []).forEach((b) => { if (b.count) badges[b.name] = { count: b.count, cat: b.category || '' }; });
 const when = j.generated ? new Date(j.generated) : null;
-return { D: { w: w, disc: DISC, inst: inst, type: typ }, badges: badges, label: 'Data as of' + (when ? ' ' + when.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '') + (skipped ? ' · ' + skipped + ' invalid rows skipped' : '') };
+return { D: { w: w, disc: DISC, inst: inst, type: typ }, badges: badges, generated: j.generated || '', label: 'Data as of' + (when ? ' ' + when.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '') + (skipped ? ' · ' + skipped + ' invalid rows skipped' : '') };
 }
 async fetchLive() {
 if (this.state.fetching) return;
-this.setState({ fetching: true, loadMsg: 'Fetching from Peloton…' });
-let mcp = null;
-try { mcp = window.claude && window.claude.use ? await window.claude.use('mcp') : null; } catch (err) { mcp = null; }
-if (!mcp) {
+let before = '';
+try { const raw = window.localStorage.getItem('pelotonReportData'); if (raw) before = JSON.parse(raw).generated || ''; } catch (err) {}
+this.setState({ fetching: true, loadMsg: 'Starting Peloton update…' });
 try {
-const r = await fetch('data/peloton_data.json?ts=' + Date.now(), { cache: 'no-store' });
-if (!r.ok) throw new Error('HTTP ' + r.status);
-const p = await r.json();
-const cv = this.convert(p);
-try { window.localStorage.setItem('pelotonReportData', JSON.stringify(p)); } catch (err) {}
-this.setState({ loaded: cv, fetching: false, loadMsg: 'Loaded the latest published copy · live Peloton updates require the Claude desktop app', f: { d: -1, i: -1, t: -1, l: -1, p: null } });
-} catch (e) {
-this.setState({ fetching: false, loadMsg: 'Couldn’t load the published data: ' + e.message });
-}
-return;
-}
-try {
-const res = await mcp.callTool('host:peloton', 'fetch_peloton_data', {}, { cache: false });
-let p = res && res.payload !== undefined ? res.payload : res;
-if (typeof p === 'string') p = JSON.parse(p);
+const r = await fetch('/api/update', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+let started = {};
+try { started = await r.json(); } catch (err) {}
+if (!r.ok) throw new Error(started.error || ('HTTP ' + r.status));
+for (let attempt = 0; attempt < 24; attempt++) {
+await new Promise((resolve) => setTimeout(resolve, attempt === 0 ? 2500 : 5000));
+const latest = await fetch('data/peloton_data.json?ts=' + Date.now(), { cache: 'no-store' });
+if (!latest.ok) continue;
+const p = await latest.json();
+if (!before || p.generated !== before) {
 const cv = this.convert(p);
 try { window.localStorage.setItem('pelotonReportData', JSON.stringify(p)); } catch (err) {}
 this.setState({ loaded: cv, fetching: false, loadMsg: 'Updated · ' + cv.D.w.length.toLocaleString('en-CA') + ' workouts', f: { d: -1, i: -1, t: -1, l: -1, p: null } });
+return;
+}
+this.setState({ loadMsg: 'Peloton is refreshing your report…' });
+}
+throw new Error('The update is still running. Try again in a minute.');
 } catch (e) {
-const code = e && e.code;
-const msg = {
-server_not_connected: 'The Peloton connector isn’t running. Open this report in the Claude desktop app with the peloton connector set up, then try again.',
-cancelled: 'Update cancelled.',
-not_in_manifest: 'This report isn’t allowed to use the Peloton connector. Allow it when asked, then try again.',
-not_granted: 'This view can’t use connectors. Open the report in the Claude desktop app.',
-capability_disabled: 'This view can’t use connectors. Open the report in the Claude desktop app.',
-server_unavailable: 'The Peloton connector didn’t answer in time. Try again in a minute.',
-tool_error: 'Peloton said: ' + String((e && e.message) || '').replace(/^.*?fetch_peloton_data:\s*/, ''),
-}[code] || ('Couldn’t update: ' + ((e && e.message) || 'unknown error'));
-this.setState({ fetching: false, loadMsg: msg });
+this.setState({ fetching: false, loadMsg: 'Couldn’t update: ' + ((e && e.message) || 'unknown error') });
 }
 }
 renderVals() {

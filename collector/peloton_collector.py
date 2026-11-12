@@ -130,7 +130,13 @@ def fetch_all():
     uid, username = me["id"], me.get("username", "")
     log.info(f"Signed in as {username}")
 
-    csv_bytes = p.get(f"/api/user/{uid}/workout_history_csv", params={"timezone": TIMEZONE}, raw=True)
+    # The CSV export can be edge-cached by Peloton. Include a per-request cache
+    # key so a manual refresh cannot silently reuse an older workout snapshot.
+    csv_bytes = p.get(
+        f"/api/user/{uid}/workout_history_csv",
+        params={"timezone": TIMEZONE, "_": int(time.time())},
+        raw=True,
+    )
     workouts = parse_csv(csv_bytes.decode("utf-8-sig", errors="replace"))
     log.info(f"Workout history: {len(workouts)} workouts")
     if not workouts:

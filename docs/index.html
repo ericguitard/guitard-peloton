@@ -79,6 +79,7 @@ const p = await latest.json();
 latestData = p;
 if (!before || p.generated !== before) {
 const cv = this.convert(p);
+cv.label = 'Data as of ' + new Date().toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 try { window.localStorage.setItem('pelotonReportData', JSON.stringify(p)); } catch (err) {}
 this.setState({ loaded: cv, fetching: false, loadMsg: 'Updated · ' + cv.D.w.length.toLocaleString('en-CA') + ' workouts', f: { d: -1, i: -1, t: -1, l: -1, p: null } });
 return;
@@ -87,6 +88,7 @@ this.setState({ loadMsg: 'Peloton is refreshing your report…' });
 }
 if (latestData) {
 const cv = this.convert(latestData);
+cv.label = 'Data as of ' + new Date().toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 try { window.localStorage.setItem('pelotonReportData', JSON.stringify(latestData)); } catch (err) {}
 this.setState({ loaded: cv, fetching: false, loadMsg: 'Already up to date · ' + cv.D.w.length.toLocaleString('en-CA') + ' workouts' });
 return;

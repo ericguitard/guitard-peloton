@@ -112,7 +112,6 @@ const monthlyBlock = activityRow.slice(chartStart, chartEnd)
 const heatBlock = template.slice(heatStart, heatEnd)
   .replace('flex-direction: column; gap: 12px; box-sizing: border-box', 'flex-direction: column; gap: 8px; box-sizing: border-box')
   .replace('padding: 20px;', 'padding: 14px;')
-  .replace('min-width: 820px;', 'min-width: 820px;')
   .replace(/<div style="display: flex; gap: 10px; align-items: baseline">[\s\S]*?<\/div>\n<svg :viewBox/, '<svg :viewBox');
 const activityHeatRow = '<div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px">' + calendarBlock + monthlyBlock + '</div>\n' + heatBlock;
 template = template.slice(0, activityRowStart) + activityHeatRow + template.slice(heatEnd);

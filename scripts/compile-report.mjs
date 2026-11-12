@@ -230,6 +230,7 @@ const footerIndex = template.lastIndexOf(footerMarker);
 if (footerIndex < 0) throw new Error('Report footer boundary was not found');
 const footer = '<footer style="max-width: 1360px; margin: 20px auto 0; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: #FFFFFF; border: 1px solid #E1E4E8; border-radius: 12px; box-sizing: border-box"><span role="status" style="font-size: 12px; color: #5B6069">{{dataLabel}} <span style="color: #3A5A8C">{{loadMsg}}</span></span><button type="button" @click="onFetch" :aria-busy="fetching" style="min-height: 40px; padding: 0 16px; border-radius: 999px; background: #DF1C2F; border: 0; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer">{{fetchLabel}}</button></footer>\n';
 template = template.slice(0, footerIndex) + footer + template.slice(footerIndex);
+template = template.replace(' · {{totalAll}} workouts · {{dataLabel}}', ' · {{totalAll}} workouts');
 
 template = template.replace('>Top workouts<', '>Latest workouts<');
 template = template.replace(

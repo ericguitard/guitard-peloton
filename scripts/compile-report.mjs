@@ -112,6 +112,7 @@ const monthlyBlock = activityRow.slice(chartStart, chartEnd)
 const heatBlock = template.slice(heatStart, heatEnd)
   .replace('flex-direction: column; gap: 12px; box-sizing: border-box', 'flex-direction: column; gap: 8px; box-sizing: border-box')
   .replace('padding: 20px;', 'padding: 14px;')
+  .replace('min-width: 820px;', 'min-width: 820px;')
   .replace(/<div style="display: flex; gap: 10px; align-items: baseline">[\s\S]*?<\/div>\n<svg :viewBox/, '<svg :viewBox');
 const activityHeatRow = '<div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px">' + calendarBlock + monthlyBlock + '</div>\n' + heatBlock;
 template = template.slice(0, activityRowStart) + activityHeatRow + template.slice(heatEnd);
@@ -218,6 +219,17 @@ if (latestIndex < 0 || latestStart < 0 || latestEnd <= latestStart) {
   throw new Error("Latest workouts panel was not found");
 }
 template = template.slice(0, latestStart) + template.slice(latestEnd);
+
+// Keep the header focused on identity and date scope. The manual refresh
+// control belongs in the footer so it does not compete with report filters.
+const dataPanelRe = /<div style="display: flex; flex-direction: column; gap: 4px">\n<span style="font-size: 11px; font-weight: 600; color: #5B6069; letter-spacing: 0\.6px">DATA<\/span>[\s\S]*?<\/div>\n<template v-if="hasData">/;
+if (!dataPanelRe.test(template)) throw new Error('Header data controls were not found');
+template = template.replace(dataPanelRe, '<template v-if="hasData">');
+const footerMarker = '</div>\n</div>';
+const footerIndex = template.lastIndexOf(footerMarker);
+if (footerIndex < 0) throw new Error('Report footer boundary was not found');
+const footer = '<footer style="max-width: 1360px; margin: 20px auto 0; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: #FFFFFF; border: 1px solid #E1E4E8; border-radius: 12px; box-sizing: border-box"><span role="status" style="font-size: 12px; color: #5B6069">{{dataLabel}} <span style="color: #3A5A8C">{{loadMsg}}</span></span><button type="button" @click="onFetch" :aria-busy="fetching" style="min-height: 40px; padding: 0 16px; border-radius: 999px; background: #DF1C2F; border: 0; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer">{{fetchLabel}}</button></footer>\n';
+template = template.slice(0, footerIndex) + footer + template.slice(footerIndex);
 
 template = template.replace('>Top workouts<', '>Latest workouts<');
 template = template.replace(

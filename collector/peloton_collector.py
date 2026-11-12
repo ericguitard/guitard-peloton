@@ -23,7 +23,7 @@ GitHub Actions
 Requires: Python 3.9+ and `pip install requests`
 Peloton does not publish this API and can change it at any time; use it only for your own data.
 """
-import argparse, csv, io, json, os, sys, time, logging
+import argparse, csv, io, json, os, re, sys, time, logging
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -88,8 +88,14 @@ def parse_csv(text):
     out = []
     for row in csv.DictReader(io.StringIO(text)):
         ts = (row.get("Workout Timestamp") or "").split(" (")[0].strip()   # e.g. "2026-10-12 06:05 (MDT)"
+        # Peloton has used both minute-precision and second/ISO-precision
+        # timestamps. Normalize either form before parsing so new rows are not
+        # silently discarded from the exported history.
+        match = re.search(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2})?", ts)
+        if match:
+            ts = match.group(0).replace("T", " ")
         try:
-            dt = datetime.strptime(ts, "%Y-%m-%d %H:%M")
+            dt = datetime.fromisoformat(ts)
         except ValueError:
             continue
         inst = (row.get("Instructor Name") or "").strip()

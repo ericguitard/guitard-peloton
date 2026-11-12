@@ -100,6 +100,7 @@ if (calStart < 0 || calEnd <= calStart || chartStart < 0 || chartEnd <= chartSta
   throw new Error('Activity and monthly chart sections were not found');
 }
 const calendarBlock = activityRow.slice(calStart, calEnd)
+  .replace('<section ', '<section class="activity-calendar" ')
   .replace('flex: 1 1 320px;', 'flex: 0 1 300px; max-width: 320px;')
   .replace('padding: 20px;', 'padding: 8px;')
   .replace('grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;', 'grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px;')
@@ -108,7 +109,8 @@ const monthlyBlock = activityRow.slice(chartStart, chartEnd)
   .replace('flex: 3 1 600px;', 'flex: 1 1 600px; align-self: flex-start;')
   .replace('padding: 20px;', 'padding: 12px;')
   .replace('gap: 12px; box-sizing: border-box', 'gap: 6px; box-sizing: border-box')
-  .replace('style="display: block"', 'style="display: block; height: 220px; max-height: 220px"');
+  .replace('style="display: block"', 'style="display: block; height: 220px; max-height: 220px"')
+  .replace('padding: 12px;', 'padding: 12px; min-height: 390px;');
 const heatBlock = template.slice(heatStart, heatEnd)
   .replace('flex-direction: column; gap: 12px; box-sizing: border-box', 'flex-direction: column; gap: 8px; box-sizing: border-box')
   .replace('padding: 20px;', 'padding: 14px;')

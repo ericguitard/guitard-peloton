@@ -110,7 +110,7 @@ const monthlyBlock = activityRow.slice(chartStart, chartEnd)
   .replace('padding: 20px;', 'padding: 12px;')
   .replace('gap: 12px; box-sizing: border-box', 'gap: 6px; box-sizing: border-box')
   .replace('style="display: block"', 'style="display: block; height: 220px; max-height: 220px"')
-  .replace('padding: 12px;', 'padding: 12px; min-height: 390px;');
+  .replace('padding: 12px;', 'padding: 12px; min-height: 330px;');
 const heatBlock = template.slice(heatStart, heatEnd)
   .replace('flex-direction: column; gap: 12px; box-sizing: border-box', 'flex-direction: column; gap: 8px; box-sizing: border-box')
   .replace('padding: 20px;', 'padding: 14px;')

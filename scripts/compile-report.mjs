@@ -232,7 +232,7 @@ const runtime = "vendor/vue.global.prod.js";
 const runtimeOnly = "vendor/vue.runtime.global.prod.js";
 const runtimeSource = fs.readFileSync(new URL("../docs/vendor/vue.runtime.global.prod.js", import.meta.url), "utf8");
 const externalRuntime = result.replace(runtime, runtimeOnly);
-const appMatch = [...externalRuntime.matchAll(/<script(?:\s[^>]*)?>\r?\n([\s\S]*?)\r?\n<\/script>/g)].find((match) => match[1].includes("fetch_peloton_data"));
+const appMatch = [...externalRuntime.matchAll(/<script(?:\s[^>]*)?>\r?\n([\s\S]*?)\r?\n<\/script>/g)].find((match) => match[1].includes("async fetchLive()"));
 if (!appMatch) throw new Error("Compiled report script was not found");
 const outputDir = path.dirname(output);
 const appPath = path.join(outputDir, "report-app.js");

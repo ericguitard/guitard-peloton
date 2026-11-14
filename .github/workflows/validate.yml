@@ -74,14 +74,38 @@ jobs:
           print(f"validated {len(data['rows'])} workout rows")
           PY
 
+      - name: Verify secret detection does not echo matches
+        run: |
+          python - <<'PY'
+          import shlex
+          import subprocess
+          import tempfile
+          from pathlib import Path
+          workflow = Path('.github/workflows/validate.yml').read_text()
+          scanner = next(line.strip()[3:-6] for line in workflow.splitlines() if line.strip().startswith('if grep ') and '--exclude-dir=.git' in line)
+          with tempfile.TemporaryDirectory() as directory:
+              fixture = Path(directory) / 'fixture.txt'
+              for content, expected in [('PELOTON_' + 'TOKEN=' + 'synthetic-test-value', 0), ('ordinary content', 1)]:
+                  fixture.write_text(content)
+                  result = subprocess.run(shlex.split(scanner), cwd=directory, capture_output=True)
+                  if result.returncode != expected or result.stdout or result.stderr:
+                      raise SystemExit(f'Secret scanner regression: expected {expected}, got {result.returncode}; output bytes {len(result.stdout)}/{len(result.stderr)}')
+          print('Secret detection and silent output verified with synthetic fixtures.')
+          PY
+
       - name: Check for accidental secrets
         shell: bash
         run: |
-          if grep -RIn --exclude-dir=.git --exclude-dir=.github --exclude=peloton_data.json -E '(Authorization: Bearer [A-Za-z0-9._-]{20,}|PELOTON_TOKEN=.{8,}|-----BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY-----)' .; then
+          if grep -Rq --exclude-dir=.git --exclude-dir=.github --exclude=peloton_data.json -E '(Authorization: Bearer [A-Za-z0-9._-]{20,}|PELOTON_TOKEN=.{8,}|-----BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY-----)' .; then
             echo '::error::Possible credential material found in tracked files.'
             exit 1
+          else
+            scan_status=$?
+            if [[ "$scan_status" != 1 ]]; then
+              echo '::error::Secret scanning could not complete.'
+              exit 1
+            fi
           fi
 
       - name: Check patch whitespace
         run: git diff --check
-

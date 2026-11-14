@@ -46,14 +46,13 @@ jobs:
 
       - name: Fetch from Peloton
         id: fetch
-        continue-on-error: true
         env:
           PELOTON_TOKEN: ${{ secrets.PELOTON_TOKEN }}
         run: python collector/peloton_collector.py --out docs/data/peloton_data.json
 
       - name: Report Peloton fetch status
-        if: steps.fetch.outcome == 'failure'
-        run: echo "::warning::Peloton data refresh failed; publishing the last known-good data. Renew the PELOTON_TOKEN Actions secret."
+        if: failure() && steps.fetch.outcome == 'failure'
+        run: echo "::error::Peloton data refresh failed; workout data was not updated. Check the fetch step for the cause."
 
       - name: Commit updated data
         id: commit
@@ -215,4 +214,3 @@ jobs:
                       raise SystemExit("Live site verification failed: {}".format(error))
                   time.sleep(10)
           PY
-

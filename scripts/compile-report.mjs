@@ -48,6 +48,29 @@ for (const [from, to] of transforms) {
   if (!source.includes(from)) throw new Error(`Report transform did not match: ${from.slice(0, 80)}`);
   source = source.replace(from, to);
 }
+// All-time totals keep their full range; each activity chart browses one year.
+const replaceYearSource = (from, to) => {
+  if (!source.includes(from)) throw new Error('Calendar-year transform did not match: ' + from.slice(0, 80));
+  source = source.replace(from, to);
+};
+replaceYearSource('const lastY = yearOf(last);', `const lastY = yearOf(last);
+const firstY = yearOf(first);
+const chartYear = (value) => Number.isInteger(value) ? Math.max(firstY, Math.min(lastY, value)) : lastY;
+const monthlyYear = chartYear(st.monthlyYear), heatmapYear = chartYear(st.heatmapYear);
+const moveChartYear = (key, value, delta) => this.setState({ [key]: chartYear(value + delta) });`);
+replaceYearSource("let y = st.mode === 'all' ? yearOf(first) : yearOf(s), m = st.mode === 'all' ? dt(first).getUTCMonth() + 1 : 1;", "let y = st.mode === 'all' ? monthlyYear : yearOf(s), m = 1;");
+replaceYearSource("const ey = st.mode === 'year' ? yearOf(s) : yearOf(eff), em = st.mode === 'year' ? 12 : dt(eff).getUTCMonth() + 1;", "const ey = st.mode === 'all' ? monthlyYear : yearOf(s), em = 12;");
+replaceYearSource("'Minutes per month'; chartHint", "'Minutes per month' + (st.mode === 'all' ? ' · ' + monthlyYear : ''); chartHint");
+replaceYearSource("const heatYears = st.mode === 'all' ? (() => { const a = []; for (let y = lastY; y >= yearOf(first); y--) a.push(y); return a; })() : [annY];", "const heatYears = [st.mode === 'all' ? heatmapYear : annY];");
+replaceYearSource('kpis: kpis, bars: bars,', `isAll: st.mode === 'all', monthlyYear: monthlyYear, heatmapYear: heatmapYear,
+canPrevMonthlyYear: monthlyYear > firstY, canNextMonthlyYear: monthlyYear < lastY,
+canPrevHeatmapYear: heatmapYear > firstY, canNextHeatmapYear: heatmapYear < lastY,
+prevMonthlyYear: () => moveChartYear('monthlyYear', monthlyYear, -1), nextMonthlyYear: () => moveChartYear('monthlyYear', monthlyYear, 1),
+prevHeatmapYear: () => moveChartYear('heatmapYear', heatmapYear, -1), nextHeatmapYear: () => moveChartYear('heatmapYear', heatmapYear, 1),
+kpis: kpis, bars: bars,`);
+replaceYearSource('"kpis", "bars",', '"isAll", "monthlyYear", "heatmapYear", "canPrevMonthlyYear", "canNextMonthlyYear", "canPrevHeatmapYear", "canNextHeatmapYear", "prevMonthlyYear", "nextMonthlyYear", "prevHeatmapYear", "nextHeatmapYear", "kpis", "bars",');
+replaceYearSource('</style>', '.chart-year-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}.chart-year-nav{display:flex;align-items:center;gap:8px;font-size:14px;font-variant-numeric:tabular-nums}.chart-year-nav button{min-width:44px;min-height:44px;border:1px solid #C9CDD3;border-radius:8px;background:#FFFFFF;color:#181A1D;font:inherit;cursor:pointer}.chart-year-nav button:disabled{opacity:.4;cursor:default}.chart-year-nav button:focus-visible{outline:2px solid #3A5A8C;outline-offset:2px}\n</style>');
+
 // The report used to overwrite the connector-backed button with a second,
 // nightly JSON loader and invoke it during startup. Remove that legacy path so
 // data is fetched only when the user presses Update.
@@ -239,6 +262,16 @@ template = template.replace(
   '<template v-for="(b, b_i) in bars"',
   '<template v-if="avgY"><line x1="0" x2="1000" :y1="avgY" :y2="avgY" stroke="#3A5A8C" stroke-width="2" stroke-dasharray="8 6"></line><text x="992" :y="avgY - 6" fill="#3A5A8C" font-size="11" text-anchor="end" font-family="Inter, sans-serif">{{avgLabel}}</text></template><template v-for="(b, b_i) in bars"'
 );
+const yearControls = (kind, label) => {
+  const field = kind === 'Monthly' ? 'monthlyYear' : 'heatmapYear';
+  return `<div v-if="isAll" class="chart-year-nav" role="group" aria-label="${label} year"><button type="button" @click="prev${kind}Year" :disabled="!canPrev${kind}Year" aria-label="Previous year for ${label}">&lt;</button><span aria-live="polite">{{${field}}}</span><button type="button" @click="next${kind}Year" :disabled="!canNext${kind}Year" aria-label="Next year for ${label}">&gt;</button></div>`;
+};
+for (const [heading, kind, label] of [['chartTitle', 'Monthly', 'minutes per month'], ['heatTitle', 'Heatmap', 'daily heatmap']]) {
+  const h = '<h3 style="margin: 0; font-size: 16px; font-weight: 600">{{' + heading + '}}</h3>';
+  if (!template.includes(h)) throw new Error('Year control heading not found: ' + heading);
+  template = template.replace(h, '<div class="chart-year-heading">' + h + yearControls(kind, label) + '</div>');
+}
+
 const compiled = compile(template, { mode: "function", prefixIdentifiers: false });
 const render = "(function(){" + compiled.code + "})()";
 const result = source.slice(0, start) + "    render: " + render + source.slice(valueEnd + 1);

@@ -99,6 +99,12 @@ jobs:
           if grep -Rq --exclude-dir=.git --exclude-dir=.github --exclude=peloton_data.json -E '(Authorization: Bearer [A-Za-z0-9._-]{20,}|PELOTON_TOKEN=.{8,}|-----BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY-----)' .; then
             echo '::error::Possible credential material found in tracked files.'
             exit 1
+          else
+            scan_status=$?
+            if [[ "$scan_status" != 1 ]]; then
+              echo '::error::Secret scanning could not complete.'
+              exit 1
+            fi
           fi
 
       - name: Check patch whitespace

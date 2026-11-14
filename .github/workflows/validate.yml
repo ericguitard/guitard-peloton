@@ -82,7 +82,7 @@ jobs:
           import tempfile
           from pathlib import Path
           workflow = Path('.github/workflows/validate.yml').read_text()
-          scanner = next(line.strip()[3:-6] for line in workflow.splitlines() if line.strip().startswith('if grep '))
+          scanner = next(line.strip()[3:-6] for line in workflow.splitlines() if line.strip().startswith('if grep ') and '--exclude-dir=.git' in line)
           with tempfile.TemporaryDirectory() as directory:
               fixture = Path(directory) / 'fixture.txt'
               for content, expected in [('PELOTON_' + 'TOKEN=' + 'synthetic-test-value', 0), ('ordinary content', 1)]:

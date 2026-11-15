@@ -232,7 +232,7 @@ if (valueEnd < 0) throw new Error("Vue template terminator was not found");
 let template = JSON.parse(String.fromCharCode(34) + source.slice(valueStart, valueEnd) + String.fromCharCode(34));
 template = template.replace('Current monthly &amp; active challenges', 'Active challenges')
   .replace('Current monthly & active challenges', 'Active challenges')
-  .replace('Live challenge catalogue checked Nov 6, 2026 · open a challenge for your current progress.', 'Joined challenges and credited progress from your latest Peloton update. Completed and expired challenges are hidden.')
+  .replace('Live challenge catalogue checked Nov 6, 2026 · open a challenge for your current progress.', 'Joined challenges and credited progress from your latest Peloton update.')
   .replace('<template v-for="(c, c_i) in activeChallenges"', '<p v-if="challengeNotice" role="status">{{challengeNotice}}</p><template v-for="(c, c_i) in activeChallenges"');
 
 // Put the compact 30-day activity card beside the daily heatmap, while keeping
@@ -429,8 +429,10 @@ const badgePagerStart = badgeSection.indexOf('<div style="display: flex; align-i
 if (badgePagerStart < 0) throw new Error('Special event badge pager was not found');
 badgeSection = badgeSection.slice(0, badgePagerStart) + `<div class="chart-year-nav" role="group" aria-label="Special event badges year"><button class="circle-control chart-year-arrow chart-year-prev" type="button" @click="badgePageNav.prev" :disabled="!badgePageNav.canPrev" aria-label="Previous year for special event badges" title="Previous year">←</button><span class="chart-year-status" aria-live="polite">{{badgePageNav.year}}</span><button class="circle-control chart-year-arrow chart-year-next" type="button" @click="badgePageNav.next" :disabled="!badgePageNav.canNext" aria-label="Next year for special event badges" title="Next year">→</button></div>`;
 badgeSection = badgeSection.replace('<section', '<section data-year-chart')
+  .replace('Earned counts come from your latest Peloton update; the full catalogue is from Pelo Buddy’s badge list.', 'Earned counts come from your latest Peloton update.')
   .replace(badgeHeading, 'Special event badges · {{badgePageNav.year}} · {{bEarned}} of {{bTotal}} earned')
-  .replace('<div style="display: flex; flex-direction: column; gap: 18px; max-height: 760px; overflow-y: auto; padding-right: 4px">', '<p v-if="!badgeGroups.length" role="status" class="badge-empty">No badges in this category for {{badgePageNav.year}}.</p><div class="badge-year-items" style="display: flex; flex-direction: column; gap: 18px; max-height: 760px; overflow-y: auto; padding-right: 4px">');
+  .replace('<div style="display: flex; flex-direction: column; gap: 18px; max-height: 760px; overflow-y: auto; padding-right: 4px">', '<div class="badge-year-body"><p v-if="!badgeGroups.length" role="status" class="badge-empty">No badges in this category for {{badgePageNav.year}}.</p><div class="badge-year-items" style="display: flex; flex-direction: column; gap: 18px; max-height: 760px; overflow-y: auto; padding-right: 4px">');
+badgeSection += '</div>';
 template = template.slice(0, badgeSectionStart) + badgeSection + template.slice(badgeSectionEnd);
 
 const compiled = compile(template, { mode: "function", prefixIdentifiers: false });
@@ -475,6 +477,9 @@ html{scroll-behavior:smooth}
 .chart-year-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .chart-year-nav .chart-year-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:2;border-radius:50%;font-size:24px;opacity:0;pointer-events:none}
 .chart-year-prev{left:8px}.chart-year-next{right:8px}
+.badge-year-body{position:relative}
+.badge-year-body .chart-year-arrow{top:42px}
+.badge-year-body .chart-year-prev{left:-12px}.badge-year-body .chart-year-next{right:-12px}
 [data-year-chart]:hover .chart-year-arrow,[data-year-chart]:focus-within .chart-year-arrow{opacity:1;pointer-events:auto}
 .chart-year-nav .chart-year-arrow:disabled{opacity:0;pointer-events:none}
 [data-year-chart]:hover .chart-year-arrow:disabled,[data-year-chart]:focus-within .chart-year-arrow:disabled{opacity:.3;cursor:default}

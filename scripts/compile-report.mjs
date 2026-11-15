@@ -277,7 +277,8 @@ const timeEnd = template.indexOf('</section></template>', noTimeStart) + '</sect
 if (timeStart < 0 || noTimeStart < 0 || timeEnd <= noTimeStart) {
   throw new Error("Workout time preference panels were not found");
 }
-const timeBlock = template.slice(timeStart, timeEnd);
+const timeBlock = template.slice(timeStart, timeEnd)
+  .replace('grid-template-columns: 150px minmax(0, 1fr) 48px;', 'grid-template-columns: minmax(0, 110px) minmax(24px, 1fr) 32px;');
 template = template.slice(0, timeStart) + template.slice(timeEnd);
 
 const classHeading = '<h3 style="margin: 0; font-size: 16px; font-weight: 600">Class length</h3>';

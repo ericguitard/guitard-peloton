@@ -50,6 +50,10 @@ class PelotonError(Exception):
     pass
 
 
+class PelotonAuthError(PelotonError):
+    pass
+
+
 class Peloton:
     def __init__(self, token: str):
         self.s = requests.Session()
@@ -64,7 +68,7 @@ class Peloton:
         for attempt in range(tries):
             r = self.s.get(API + path, params=params, timeout=60)
             if r.status_code == 401:
-                raise PelotonError("Peloton rejected the token (401). Paste a fresh Bearer token into peloton_token.txt or the PELOTON_TOKEN secret.")
+                raise PelotonAuthError("Peloton rejected the token (401). Renew the PELOTON_TOKEN GitHub Actions secret.")
             if r.status_code in (429, 500, 502, 503, 504):
                 wait = 5 * (attempt + 1)
                 log.info(f"{r.status_code} on {path}; retrying in {wait}s")
@@ -243,6 +247,7 @@ def fetch_all():
     # Use the same credited progress as Peloton's challenge page, never a guess
     # from class titles. Do not export participant or account details.
     challenge_progress = {}
+    annual_progress = {}
     active_challenges = None
     try:
         catalogue = p.get(
@@ -258,6 +263,12 @@ def fetch_all():
             if not isinstance(cid, str) or not re.fullmatch(r"[0-9a-f]{32}", cid) or cid in seen:
                 continue
             seen.add(cid)
+            annual_year = re.fullmatch(r"The Annual (\d{4})", str(summary.get("title", "")))
+            progress = item.get("progress") or {}
+            annual_value = challenge_field(progress, "metric_value", "metricValue")
+            if annual_year and challenge_number(annual_value) and challenge_field(progress, "has_joined", "hasJoined") is True:
+                # Keep credited Annual minutes even after its completed card is hidden.
+                annual_progress[annual_year.group(1)] = annual_value
             # Details supply all reward tiers, including goals beyond the next badge.
             details = p.get(f"/api/user/{uid}/challenge/{cid}")
             challenge = parse_active_challenge(details)
@@ -278,6 +289,7 @@ def fetch_all():
                     "current_daily": streaks.get("current_daily")},
         "peloton_counts": counts,
         "challenge_progress": challenge_progress,
+        "annual_progress": annual_progress,
         "active_challenges": active_challenges,
     }
 
@@ -297,5 +309,10 @@ if __name__ == "__main__":
     try:
         main()
     except (PelotonError, requests.RequestException) as e:
+        output_file = os.environ.get("GITHUB_OUTPUT")
+        if output_file:
+            code = "peloton_auth_required" if isinstance(e, PelotonAuthError) else "peloton_fetch_failed"
+            with open(output_file, "a", encoding="utf-8") as output:
+                output.write(f"error_code={code}\n")
         log.error(str(e))
         sys.exit(1)

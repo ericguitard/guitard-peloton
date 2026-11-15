@@ -36,6 +36,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check "requests==2.34.2"
 
       - name: Check required secret
+        id: token
         env:
           PELOTON_TOKEN: ${{ secrets.PELOTON_TOKEN }}
         run: |
@@ -54,12 +55,32 @@ jobs:
         if: failure() && steps.fetch.outcome == 'failure'
         run: echo "::error::Peloton data refresh failed; workout data was not updated. Check the fetch step for the cause."
 
+      - name: Record safe update outcome
+        if: always()
+        env:
+          FETCH_OUTCOME: ${{ steps.fetch.outcome }}
+          TOKEN_OUTCOME: ${{ steps.token.outcome }}
+          FETCH_ERROR_CODE: ${{ steps.fetch.outputs.error_code }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          success = os.environ.get("FETCH_OUTCOME") == "success"
+          auth_failed = os.environ.get("TOKEN_OUTCOME") == "failure" or os.environ.get("FETCH_ERROR_CODE") == "peloton_auth_required"
+          status = {"state": "success" if success else "error", "code": None if success else "peloton_auth_required" if auth_failed else "peloton_fetch_failed", "completed_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+          path = Path("docs/data/update-status.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(status, separators=(",", ":")), encoding="utf-8")
+          PY
+
       - name: Commit updated data
+        if: always()
         id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/data/peloton_data.json
+          git add docs/data/peloton_data.json docs/data/update-status.json
           if git diff --cached --quiet; then
             echo "No change in Peloton data"
           else
@@ -124,6 +145,7 @@ jobs:
         run: |
           python - <<'PY'
           import os
+          import json
           from pathlib import Path
 
           path = Path("docs/index.html")
@@ -132,6 +154,9 @@ jobs:
           text = text.replace('src="report-app.js"', f'src="report-app.js?v={version}"')
           text = text.replace('href="report.css"', f'href="report.css?v={version}"')
           path.write_text(text, encoding="utf-8")
+          status_path = Path("docs/data/update-status.json")
+          if not status_path.exists():
+              status_path.write_text(json.dumps({"state": "idle", "code": None, "completed_at": None}), encoding="utf-8")
           PY
 
       - name: Upload Pages artifact
@@ -166,6 +191,7 @@ jobs:
           urls = [
               site,
               urljoin(site, "data/peloton_data.json"),
+              urljoin(site, "data/update-status.json"),
               urljoin(site, "report-app.js"),
               urljoin(site, "report.css"),
           ]

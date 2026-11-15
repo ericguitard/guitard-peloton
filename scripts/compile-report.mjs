@@ -384,6 +384,7 @@ if (timeStart < 0 || noTimeStart < 0 || timeEnd <= noTimeStart) {
   throw new Error("Workout time preference panels were not found");
 }
 const timeBlock = template.slice(timeStart, timeEnd)
+  .replaceAll('max-height: 260px; ', '')
   .replace('grid-template-columns: 150px minmax(0, 1fr) 48px;', 'grid-template-columns: minmax(0, 110px) minmax(24px, 1fr) 32px;');
 template = template.slice(0, timeStart) + template.slice(timeEnd);
 
@@ -395,7 +396,7 @@ if (classHeadingIndex < 0 || classSectionStart < 0 || classSectionEnd <= classSe
   throw new Error("Class length panel was not found");
 }
 const classSection = template.slice(classSectionStart, classSectionEnd);
-const stackedClassColumn = '<div style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 14px">' + classSection + timeBlock + '</div>';
+const stackedClassColumn = '<div class="workout-facet-stack" style="flex: 1 1 240px; min-width: 0; display: grid; grid-template-rows: repeat(2, 1fr); gap: 14px">' + classSection + timeBlock + '</div>';
 template = template.slice(0, classSectionStart) + stackedClassColumn + template.slice(classSectionEnd);
 
 // The filtered class table is useful as the detailed result view, not just an
@@ -486,6 +487,11 @@ template = template.replace('>Discipline milestones<', '>Milestones<');
 template = template.replace(/(<h[1-6]\b[^>]*>)([\s\S]*?)(<\/h[1-6]>)/g, (_, open, body, close) =>
   open + body.replace(/(\{\{[\s\S]*?\}\}|<[^>]*>)|([^<{]+)/g, (part, markup, text) =>
     markup || text.replace(/\b[a-z]/g, (letter) => letter.toUpperCase())) + close);
+
+// Mark every external link once; existing challenge arrows stay unchanged.
+template = template.replace(/(<a\b[^>]*>)([\s\S]*?)(<\/a>)/g, (link, open, body, close) =>
+  /\btarget="_blank"|\bhref="https?:\/\//.test(open) && !body.includes('↗')
+    ? open + body + ' ↗' + close : link);
 
 const compiled = compile(template, { mode: "function", prefixIdentifiers: false });
 const render = "(function(){" + compiled.code + "})()";

@@ -137,6 +137,67 @@ def parse_challenge_progress(payload):
     return result
 
 
+def challenge_field(obj, snake, camel):
+    return obj.get(snake, obj.get(camel)) if isinstance(obj, dict) else None
+
+
+def challenge_number(value):
+    return (isinstance(value, (int, float)) and not isinstance(value, bool)
+            and math.isfinite(value) and value >= 0)
+
+
+def challenge_date(value):
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return datetime.fromtimestamp(value, timezone.utc).isoformat()
+    if isinstance(value, str) and value:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return parsed.replace(tzinfo=parsed.tzinfo or timezone.utc).astimezone(timezone.utc).isoformat()
+    return None
+
+
+def parse_active_challenge(item, now=None):
+    """Allowlist catalogue fields; never publish participants or account data."""
+    summary = challenge_field(item, "challenge_summary", "challengeSummary") or {}
+    detail = challenge_field(item, "challenge_detail", "challengeDetail") or {}
+    progress = item.get("progress") or {}
+    cid = summary.get("id", "")
+    if not isinstance(cid, str) or not re.fullmatch(r"[0-9a-f]{32}", cid):
+        return None
+    if summary.get("status") != "current":
+        return None
+    start = challenge_date(challenge_field(summary, "start_time", "startTime"))
+    end = challenge_date(challenge_field(summary, "end_time", "endTime"))
+    now = now or datetime.now(timezone.utc)
+    if (start and datetime.fromisoformat(start) > now) or (end and datetime.fromisoformat(end) <= now):
+        return None
+    value = challenge_field(progress, "metric_value", "metricValue")
+    display = challenge_field(progress, "metric_display_value", "metricDisplayValue")
+    unit = challenge_field(progress, "metric_display_unit", "metricDisplayUnit")
+    tiers = []
+    for tier in detail.get("tiers", []):
+        target = challenge_field(tier, "metric_value", "metricValue")
+        if not challenge_number(target) or not target or not challenge_field(tier, "has_reward", "hasReward"):
+            continue
+        tiers.append({"value": target, "title": str(tier.get("title") or "Goal")[:100],
+                      "display_value": str(challenge_field(tier, "metric_display_value", "metricDisplayValue") or target)[:100],
+                      "display_unit": str(challenge_field(tier, "metric_display_unit", "metricDisplayUnit") or unit or "")[:100]})
+    tiers.sort(key=lambda tier: tier["value"])
+    current_tier = challenge_field(progress, "current_tier", "currentTier") or {}
+    next_tier = challenge_field(progress, "next_tier", "nextTier")
+    joined = challenge_field(progress, "has_joined", "hasJoined")
+    completed = (challenge_number(value) and tiers and value >= tiers[-1]["value"]) or (
+        joined is True and ("next_tier" in progress or "nextTier" in progress) and next_tier is None
+        and challenge_field(current_tier, "has_reward", "hasReward") is True)
+    if completed:
+        return None
+    return {"id": cid, "title": str(summary.get("title") or "Peloton challenge")[:300],
+            "description": str(summary.get("description") or "")[:2000],
+            "start": start, "end": end, "status": "current", "completed": False,
+            "value": value if challenge_number(value) else None,
+            "display_value": str(display)[:100] if display is not None else None,
+            "display_unit": str(unit or "")[:100], "tiers": tiers}
+
+
 def fetch_all():
     """Return {source, username, generated, fields, rows, badges, streaks, peloton_counts}."""
     token = os.environ.get("PELOTON_TOKEN", "").strip()
@@ -180,13 +241,30 @@ def fetch_all():
     # Use the same credited progress as Peloton's challenge page, never a guess
     # from class titles. Do not export participant or account details.
     challenge_progress = {}
+    active_challenges = None
     try:
-        challenge_progress = parse_challenge_progress(p.get(
+        catalogue = p.get(
             f"/api/user/{uid}/challenges/current",
             params={"has_joined": "false", "_": int(time.time())},
-        ))
+        )
+        challenge_progress = parse_challenge_progress(catalogue)
+        active_challenges = []
+        seen = set()
+        for item in catalogue["challenges"]:
+            summary = challenge_field(item, "challenge_summary", "challengeSummary") or {}
+            cid = summary.get("id", "")
+            if not isinstance(cid, str) or not re.fullmatch(r"[0-9a-f]{32}", cid) or cid in seen:
+                continue
+            seen.add(cid)
+            # Details supply all reward tiers, including goals beyond the next badge.
+            details = p.get(f"/api/user/{uid}/challenge/{cid}")
+            challenge = parse_active_challenge(details)
+            if challenge is not None:
+                active_challenges.append(challenge)
         log.info("Challenge progress: %d totals", len(challenge_progress))
-    except (requests.RequestException, PelotonError, TypeError, ValueError, AttributeError):
+        log.info("Active incomplete challenges: %d", len(active_challenges))
+    except (requests.RequestException, PelotonError, TypeError, ValueError, AttributeError, KeyError, OverflowError):
+        active_challenges = None
         log.warning("Challenge progress unavailable; workout history is still updated")
 
     return {
@@ -198,6 +276,7 @@ def fetch_all():
                     "current_daily": streaks.get("current_daily")},
         "peloton_counts": counts,
         "challenge_progress": challenge_progress,
+        "active_challenges": active_challenges,
     }
 
 

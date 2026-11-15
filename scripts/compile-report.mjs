@@ -48,25 +48,43 @@ for (const [from, to] of transforms) {
   if (!source.includes(from)) throw new Error(`Report transform did not match: ${from.slice(0, 80)}`);
   source = source.replace(from, to);
 }
-// Challenge-specific credited totals are separate from the compact workout
-// records: slot 10 is start time, not the title or a repetition count.
+// The current catalogue, eligibility and credited totals come from Peloton.
 const replaceChallengeSource = (from, to) => {
   if (!source.includes(from)) throw new Error('Challenge transform did not match: ' + from.slice(0, 80));
   source = source.replace(from, to);
 };
 replaceChallengeSource('x.cal || 0, t]);', "x.cal || 0, t, String(x.title || '')]);");
-replaceChallengeSource('badges: badges, generated:', 'badges: badges, challengeProgress: j.challenge_progress || {}, generated:');
-replaceChallengeSource("if (n.includes('annual')) current", `const challengeId = c.u.split('/').pop();
-  const credited = st.loaded && st.loaded.challengeProgress && st.loaded.challengeProgress[challengeId];
-  const requiresCreditedProgress = n.includes('rep goal') || n.includes('turkey burn');
-  if (requiresCreditedProgress) {
-    available = !!credited && typeof credited.value === 'number' && Number.isFinite(credited.value) && credited.value >= 0;
-    if (available) current = credited.value;
-  }
-  else if (n.includes('annual')) current`);
-replaceChallengeSource("/pilates/i.test(r[10] || '')", "/pilates/i.test(r[11] || '')");
-replaceChallengeSource("else if (n.includes('turkey burn')) current = monthRows.filter((r) => /turkey burn/i.test(r[10] || '')).length;", '');
-replaceChallengeSource("status: 'Current: ' + value + ' ' + unit + ' · Gold: ' + gold", "status: available ? 'Current: ' + value + ' ' + unit + ' · Gold: ' + gold : 'Progress unavailable · Update data to retry'");
+replaceChallengeSource('badges: badges, generated:', 'badges: badges, activeChallenges: Array.isArray(j.active_challenges) ? j.active_challenges : null, generated:');
+const catalogueStart = source.indexOf('const ACTIVE_CHALLENGES = [');
+const catalogueEnd = source.indexOf('\n];', catalogueStart);
+if (catalogueStart < 0 || catalogueEnd < 0) throw new Error('Fixed challenge catalogue was not found');
+source = source.slice(0, catalogueStart) + 'const ACTIVE_CHALLENGES = this.state.loaded && this.state.loaded.activeChallenges;' + source.slice(catalogueEnd + 3);
+const challengeRowsStart = source.indexOf('const latestDate = dt(last),');
+const challengeRowsEnd = source.indexOf('const chips = [];', challengeRowsStart);
+if (challengeRowsStart < 0 || challengeRowsEnd < 0) throw new Error('Challenge calculations were not found');
+source = source.slice(0, challengeRowsStart) + `const challengeNow = Date.now();
+const challengeRows = (ACTIVE_CHALLENGES || []).filter((c) => {
+  if (!c || !/^[0-9a-f]{32}$/.test(c.id) || c.status !== 'current' || c.completed) return false;
+  if (c.start && !(Date.parse(c.start) <= challengeNow)) return false;
+  if (c.end && !(Date.parse(c.end) > challengeNow)) return false;
+  const tiers = Array.isArray(c.tiers) ? c.tiers : [];
+  const target = tiers.length ? tiers[tiers.length - 1].value : null;
+  return !(typeof target === 'number' && target > 0 && typeof c.value === 'number' && c.value >= target);
+}).map((c) => {
+  const tiers = Array.isArray(c.tiers) ? c.tiers : [];
+  const goal = tiers[tiers.length - 1];
+  const available = typeof c.value === 'number' && Number.isFinite(c.value) && c.value >= 0;
+  const shownValue = c.display_value == null ? (available ? num(c.value) : '') : c.display_value;
+  const goalText = goal ? goal.title + ': ' + goal.display_value + ' ' + goal.display_unit : '';
+  return { n: c.title, d: c.description, u: 'https://members.onepeloton.com/en-CA/challenges/active/' + c.id,
+    status: available ? 'Current: ' + shownValue + ' ' + c.display_unit + (goalText ? ' · ' + goalText : '') : 'Progress unavailable · Update data to retry',
+    tierText: tiers.map((t) => t.title + ': ' + t.display_value + ' ' + t.display_unit).join(' · '),
+    pct: available && goal && goal.value > 0 ? Math.min(100, Math.round(100 * c.value / goal.value)) : 0 };
+});
+const challengeNotice = !Array.isArray(ACTIVE_CHALLENGES) ? 'Challenge catalogue unavailable. Update data to retry.' : challengeRows.length ? '' : 'No active incomplete challenges.';
+` + source.slice(challengeRowsEnd);
+replaceChallengeSource('activeChallenges: challengeRows, ac: challengeRows,', 'activeChallenges: challengeRows, ac: challengeRows, challengeNotice: challengeNotice,');
+replaceChallengeSource('"activeChallenges",', '"challengeNotice", "activeChallenges",');
 
 // Badge years come from the whole catalogue so changing earned status cannot
 // change the year or its navigation limits. Preserve an existing saved page.
@@ -147,6 +165,10 @@ const valueEnd = (() => {
 })();
 if (valueEnd < 0) throw new Error("Vue template terminator was not found");
 let template = JSON.parse(String.fromCharCode(34) + source.slice(valueStart, valueEnd) + String.fromCharCode(34));
+template = template.replace('Current monthly &amp; active challenges', 'Active challenges')
+  .replace('Current monthly & active challenges', 'Active challenges')
+  .replace('Live challenge catalogue checked Nov 6, 2026 · open a challenge for your current progress.', 'Current challenges and credited progress from your latest Peloton update. Completed and expired challenges are hidden.')
+  .replace('<template v-for="(c, c_i) in activeChallenges"', '<p v-if="challengeNotice" role="status">{{challengeNotice}}</p><template v-for="(c, c_i) in activeChallenges"');
 
 // Put the compact 30-day activity card beside the daily heatmap, while keeping
 // the minutes-per-month chart on its own row so the primary activity controls
@@ -217,7 +239,7 @@ if (achievementsAnnualStart < 0 || achievementsAnnualEnd <= achievementsAnnualSt
 }
 template = template.slice(0, achievementsAnnualStart) + template.slice(achievementsAnnualEnd);
 
-const challengeHeading = 'Current monthly &amp; active challenges';
+const challengeHeading = 'Active challenges';
 const challengeHeadingIndex = template.indexOf(challengeHeading);
 const challengeSectionStart = template.lastIndexOf('<section', challengeHeadingIndex);
 if (challengeHeadingIndex < 0 || challengeSectionStart < 0) throw new Error("Active challenge section was not found");

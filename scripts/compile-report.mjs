@@ -264,13 +264,24 @@ template = template.replace(
 );
 const yearControls = (kind, label) => {
   const field = kind === 'Monthly' ? 'monthlyYear' : 'heatmapYear';
-  return `<div v-if="isAll" class="chart-year-nav" role="group" aria-label="${label} year"><button type="button" @click="prev${kind}Year" :disabled="!canPrev${kind}Year" aria-label="Previous year for ${label}">&lt;</button><span aria-live="polite">{{${field}}}</span><button type="button" @click="next${kind}Year" :disabled="!canNext${kind}Year" aria-label="Next year for ${label}">&gt;</button></div>`;
+  return `<div v-if="isAll" class="chart-year-nav" role="group" aria-label="${label} year"><button class="circle-control chart-year-arrow chart-year-prev" type="button" @click="prev${kind}Year" :disabled="!canPrev${kind}Year" aria-label="Previous year for ${label}" title="Previous year">←</button><span class="chart-year-status" aria-live="polite">{{${field}}}</span><button class="circle-control chart-year-arrow chart-year-next" type="button" @click="next${kind}Year" :disabled="!canNext${kind}Year" aria-label="Next year for ${label}" title="Next year">→</button></div>`;
 };
 for (const [heading, kind, label] of [['chartTitle', 'Monthly', 'minutes per month'], ['heatTitle', 'Heatmap', 'daily heatmap']]) {
   const h = '<h3 style="margin: 0; font-size: 16px; font-weight: 600">{{' + heading + '}}</h3>';
   if (!template.includes(h)) throw new Error('Year control heading not found: ' + heading);
-  template = template.replace(h, '<div class="chart-year-heading">' + h + yearControls(kind, label) + '</div>');
+  const headingIndex = template.indexOf(h);
+  const sectionStart = template.lastIndexOf('<section', headingIndex);
+  const sectionEnd = template.indexOf('</section>', headingIndex);
+  if (sectionStart < 0 || sectionEnd < 0) throw new Error('Year control section not found: ' + heading);
+  const section = template.slice(sectionStart, sectionEnd)
+    .replace('<section', '<section data-year-chart')
+    .replace(h, '<div class="chart-year-heading">' + (kind === 'Heatmap' ? h.replace('{{heatTitle}}', '{{heatTitle}}<span v-if="isAll"> · {{heatmapYear}}</span>') : h) + '</div>' + yearControls(kind, label));
+  template = template.slice(0, sectionStart) + section + template.slice(sectionEnd);
 }
+
+// An ordinary link remains usable without JavaScript; the scroll listener only
+// controls visibility. Keep styles external for the report's existing CSP.
+template += '<a class="circle-control back-to-top" href="#report-top" aria-label="Back to top" title="Back to top">↑</a>';
 
 const compiled = compile(template, { mode: "function", prefixIdentifiers: false });
 const render = "(function(){" + compiled.code + "})()";
@@ -283,12 +294,45 @@ const appMatch = [...externalRuntime.matchAll(/<script(?:\s[^>]*)?>\r?\n([\s\S]*
 if (!appMatch) throw new Error("Compiled report script was not found");
 const outputDir = path.dirname(output);
 const appPath = path.join(outputDir, "report-app.js");
-fs.writeFileSync(appPath, appMatch[1] + "\n");
+const scrollControls = `
+(function () {
+  const link = document.querySelector('.back-to-top');
+  if (!link) return;
+  let frame = null;
+  const update = () => {
+    link.classList.toggle('show', window.scrollY > Math.min(600, window.innerHeight * 0.5));
+    frame = null;
+  };
+  window.addEventListener('scroll', () => {
+    if (frame === null) frame = window.requestAnimationFrame(update);
+  }, { passive: true });
+  update();
+})();
+`;
+fs.writeFileSync(appPath, appMatch[1] + "\n" + scrollControls);
 const externalApp = externalRuntime.replace(appMatch[0], "<script src=\"report-app.js\"></script>");
 const styleMatch = externalApp.match(/<style>\r?\n([\s\S]*?)\r?\n<\/style>/);
 if (!styleMatch) throw new Error("Report stylesheet was not found");
 const cssPath = path.join(outputDir, "report.css");
-fs.writeFileSync(cssPath, styleMatch[1] + "\n");
+const controlStyles = `
+html{scroll-behavior:smooth}
+[data-year-chart]{position:relative}
+.circle-control{width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1px solid #C9CDD3;border-radius:50%;background:#FFFFFF;color:#181A1D;box-shadow:0 2px 8px #181a1d26;font:inherit;font-size:24px;text-decoration:none;cursor:pointer;transition:opacity .15s,background .15s,box-shadow .15s}
+.circle-control:hover{background:#F4F5F7;box-shadow:0 3px 12px #181a1d38}
+.circle-control:focus-visible{outline:2px solid #3A5A8C;outline-offset:3px}
+.chart-year-nav{display:contents}
+.chart-year-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.chart-year-nav .chart-year-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:2;border-radius:50%;font-size:24px;opacity:0;pointer-events:none}
+.chart-year-prev{left:8px}.chart-year-next{right:8px}
+[data-year-chart]:hover .chart-year-arrow,[data-year-chart]:focus-within .chart-year-arrow{opacity:1;pointer-events:auto}
+.chart-year-nav .chart-year-arrow:disabled{opacity:0;pointer-events:none}
+[data-year-chart]:hover .chart-year-arrow:disabled,[data-year-chart]:focus-within .chart-year-arrow:disabled{opacity:.3;cursor:default}
+.back-to-top{position:fixed;right:24px;bottom:24px;z-index:50;opacity:0;visibility:hidden;pointer-events:none}
+.back-to-top.show{opacity:1;visibility:visible;pointer-events:auto}
+@media(hover:none),(pointer:coarse){.chart-year-nav .chart-year-arrow{opacity:1;pointer-events:auto}.chart-year-nav .chart-year-arrow:disabled{opacity:.3;pointer-events:none}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.circle-control{transition:none}}
+`;
+fs.writeFileSync(cssPath, styleMatch[1] + "\n" + controlStyles);
 const runtimeTag = `<script src=\"${runtimeOnly}\"></script>`;
-const externalAssets = externalApp.replace(styleMatch[0], "<link rel=\"stylesheet\" href=\"report.css\">");
+const externalAssets = externalApp.replace(styleMatch[0], "<link rel=\"stylesheet\" href=\"report.css\">").replace('<body>', '<body id="report-top">');
 fs.writeFileSync(output, externalAssets);

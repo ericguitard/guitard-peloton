@@ -184,6 +184,34 @@ formatSource("paceTxt: doneAt !== null ? 'Earned on ' + fd(doneAt)", "paceTxt: a
 formatSource("needTxt: doneAt !== null ? 'Goal reached'", "needTxt: annualGoalReached ? 'Goal reached'");
 formatSource('(gap >= 0 || doneAt !== null)', '(gap >= 0 || annualGoalReached)');
 
+// The activity card always browses complete 30-day windows anchored to the
+// viewer's local calendar date, independently of report/date filters or sync age.
+formatSource("const calE = F.p ? Math.min(F.p[1], last) : eff;", `const activityNow = new Date(st.activityClock || Date.now());
+const activityToday = idx(activityNow.getFullYear(), activityNow.getMonth() + 1, activityNow.getDate());
+const maxActivityOffset = Math.max(0, Math.floor((activityToday - first) / 30));
+const activityOffset = Math.min(maxActivityOffset, Math.max(0, Math.floor(Number(st.activityOffset) || 0)));
+const moveActivity = (delta) => this.setState({ activityOffset: Math.min(maxActivityOffset, Math.max(0, activityOffset + delta)) });
+const calE = activityToday - activityOffset * 30;`);
+formatSource("const calEnd = calE + (6 - ((calE + 5) % 7)), calStart = calEnd - 34;", "const calEnd = calE + (6 - ((calE + 5) % 7)), calFirst = calE - 29, calStart = calFirst - ((calFirst + 5) % 7);");
+formatSource("const on = actF.has(d) && d <= calE, inw = d > calE - 30 && d <= calE;", "const inw = d > calE - 30 && d <= calE, on = actF.has(d) && inw;");
+formatSource("pick: d <= last ? () => setF({ p: selD ? null : [d, d, fd(d)] }) : () => {}", "disabled: !inw, pick: inw ? () => setF({ p: selD ? null : [d, d, fd(d)] }) : () => {}");
+formatSource("cal30: cal30,", "activityOffset: activityOffset, canPrevActivity: activityOffset < maxActivityOffset, canNextActivity: activityOffset > 0, prevActivity: () => moveActivity(1), nextActivity: () => moveActivity(-1), cal30: cal30,");
+formatSource('"cal30", "act30",', '"activityOffset", "canPrevActivity", "canNextActivity", "prevActivity", "nextActivity", "cal30", "act30",');
+formatSource("(delta === 0 ? 'same as' : (delta > 0 ? '▲ ' : '▼ ') + num(Math.abs(delta)) + (Math.abs(delta) === 1 ? ' day vs.' : ' days vs.')) + ' previous 30'", "(delta === 0 ? '' : delta > 0 ? '▲ ' : '▼ ') + num(Math.abs(delta)) + (Math.abs(delta) === 1 ? ' day vs.' : ' days vs.') + ' last 30'");
+formatSource("calTitle: '30-day activity", "calTitle: '30 Day Activity");
+formatSource('comp.state = Vue.reactive(comp.state);', `comp.state = Vue.reactive(comp.state);
+  let activityDay = new Date().toDateString();
+  const refreshActivityDay = () => {
+    const currentDay = new Date().toDateString();
+    if (currentDay !== activityDay) {
+      activityDay = currentDay;
+      comp.setState({ activityClock: Date.now() });
+    }
+  };
+  window.setInterval(refreshActivityDay, 60000);
+  document.addEventListener('visibilitychange', refreshActivityDay);`);
+
+
 // All-time totals keep their full range; each activity chart browses one year.
 const replaceYearSource = (from, to) => {
   if (!source.includes(from)) throw new Error('Calendar-year transform did not match: ' + from.slice(0, 80));
@@ -264,11 +292,13 @@ if (calStart < 0 || calEnd <= calStart || chartStart < 0 || chartEnd <= chartSta
   throw new Error('Activity and monthly chart sections were not found');
 }
 const calendarBlock = activityRow.slice(calStart, calEnd)
-  .replace('<section ', '<section class="activity-calendar" ')
+  .replace('<section ', '<section data-year-chart class="activity-calendar" ')
   .replace('flex: 1 1 320px;', 'flex: 0 1 300px; max-width: 320px;')
   .replace('padding: 20px;', 'padding: 8px;')
   .replace('grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;', 'grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px;')
-  .replace('padding-top: 8px;', 'padding-top: 4px;');
+  .replace('padding-top: 8px;', 'padding-top: 4px;')
+  .replace('@click="c.pick" :aria-label="c.label"', '@click="c.pick" :disabled="c.disabled" :aria-label="c.label"')
+  .replace('</section>', '<div class="chart-year-nav" role="group" aria-label="30 Day Activity periods"><button class="circle-control chart-year-arrow chart-year-prev" type="button" @click="prevActivity" :disabled="!canPrevActivity" aria-label="Previous 30 days" title="Previous 30 days">←</button><button class="circle-control chart-year-arrow chart-year-next" type="button" @click="nextActivity" :disabled="!canNextActivity" aria-label="Next 30 days" title="Next 30 days">→</button></div></section>');
 const monthlyBlock = activityRow.slice(chartStart, chartEnd)
   .replace('<section ', '<section class="minutes-monthly" ')
   .replace('flex: 3 1 600px;', 'flex: 1 1 600px; align-self: flex-start;')
@@ -483,6 +513,10 @@ html{scroll-behavior:smooth}
 .chart-year-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .chart-year-nav .chart-year-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:2;border-radius:50%;font-size:24px;opacity:0;pointer-events:none}
 .chart-year-prev{left:8px}.chart-year-next{right:8px}
+.activity-calendar{padding-left:40px!important;padding-right:40px!important}
+.activity-calendar h3{margin-left:-28px!important;margin-right:-28px!important}
+.activity-calendar .chart-year-prev{left:2px}.activity-calendar .chart-year-next{right:2px}
+.activity-calendar .chart-year-arrow{width:36px;height:36px;font-size:20px}
 .badge-year-body{position:relative}
 .badge-year-body .chart-year-arrow{top:42px}
 .badge-year-body .chart-year-prev{left:-12px}.badge-year-body .chart-year-next{right:-12px}

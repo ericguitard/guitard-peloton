@@ -53,6 +53,21 @@ const replaceChallengeSource = (from, to) => {
   if (!source.includes(from)) throw new Error('Challenge transform did not match: ' + from.slice(0, 80));
   source = source.replace(from, to);
 };
+replaceChallengeSource("let before = '';\ntry { const raw = window.localStorage.getItem('pelotonReportData'); if (raw) before = JSON.parse(raw).generated || ''; } catch (err) {}", "const requestedAt = Date.now();");
+replaceChallengeSource("const latest = await fetch('data/peloton_data.json?ts='", `let updateStatus = null;
+const outcome = await fetch('data/update-status.json?ts=' + Date.now(), { cache: 'no-store' });
+if (outcome.ok) updateStatus = await outcome.json();
+const freshOutcome = updateStatus && Date.parse(updateStatus.completed_at) >= requestedAt;
+if (freshOutcome && updateStatus.state === 'error') {
+  throw new Error(updateStatus.code === 'peloton_auth_required' ? 'Peloton sign-in expired or was rejected. Renew PELOTON_TOKEN in GitHub Actions secrets, then try Update again. Your previous report is unchanged.' : 'Peloton could not refresh the data. Try again shortly; your previous report is unchanged.');
+}
+const latest = await fetch('data/peloton_data.json?ts='`);
+replaceChallengeSource("if (!before || p.generated !== before)", "if (freshOutcome && updateStatus.state === 'success' && Date.parse(p.generated) >= requestedAt)");
+const staleFallbackStart = source.indexOf('if (latestData) {');
+const staleFallbackEnd = source.indexOf("throw new Error('The published report could not be reached. Try again in a minute.');", staleFallbackStart);
+if (staleFallbackStart < 0 || staleFallbackEnd < 0) throw new Error('Update timeout fallback was not found');
+source = source.slice(0, staleFallbackStart) + source.slice(staleFallbackEnd);
+replaceChallengeSource("The published report could not be reached. Try again in a minute.", "The update has not finished or could not be published. Try again in a minute; your previous report is unchanged.");
 replaceChallengeSource('x.cal || 0, t]);', "x.cal || 0, t, String(x.title || '')]);");
 // Like class length, time-of-day is a facet: ignore its own selection when
 // counting choices, while retaining all other active filters.

@@ -126,9 +126,10 @@ def parse_challenge_progress(payload):
     """Export only challenge IDs and the credited metric used by Peloton's UI."""
     result = {}
     for item in payload.get("challenges", []):
-        summary, progress = item.get("challengeSummary", {}), item.get("progress", {})
+        summary = item.get("challenge_summary", item.get("challengeSummary", {}))
+        progress = item.get("progress", {})
         challenge_id = summary.get("id", "")
-        value = progress.get("metricValue")
+        value = progress.get("metric_value", progress.get("metricValue"))
         if (isinstance(challenge_id, str) and re.fullmatch(r"[0-9a-f]{32}", challenge_id)
                 and isinstance(value, (int, float)) and not isinstance(value, bool)
                 and math.isfinite(value) and value >= 0):

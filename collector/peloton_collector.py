@@ -160,6 +160,8 @@ def parse_active_challenge(item, now=None):
     summary = challenge_field(item, "challenge_summary", "challengeSummary") or {}
     detail = challenge_field(item, "challenge_detail", "challengeDetail") or {}
     progress = item.get("progress") or {}
+    if challenge_field(progress, "has_joined", "hasJoined") is not True:
+        return None
     cid = summary.get("id", "")
     if not isinstance(cid, str) or not re.fullmatch(r"[0-9a-f]{32}", cid):
         return None
@@ -192,7 +194,7 @@ def parse_active_challenge(item, now=None):
         return None
     return {"id": cid, "title": str(summary.get("title") or "Peloton challenge")[:300],
             "description": str(summary.get("description") or "")[:2000],
-            "start": start, "end": end, "status": "current", "completed": False,
+            "start": start, "end": end, "status": "current", "completed": False, "joined": True,
             "value": value if challenge_number(value) else None,
             "display_value": str(display)[:100] if display is not None else None,
             "display_unit": str(unit or "")[:100], "tiers": tiers}
@@ -245,7 +247,7 @@ def fetch_all():
     try:
         catalogue = p.get(
             f"/api/user/{uid}/challenges/current",
-            params={"has_joined": "false", "_": int(time.time())},
+            params={"has_joined": "true", "_": int(time.time())},
         )
         challenge_progress = parse_challenge_progress(catalogue)
         active_challenges = []

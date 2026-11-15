@@ -54,6 +54,10 @@ const replaceChallengeSource = (from, to) => {
   source = source.replace(from, to);
 };
 replaceChallengeSource('x.cal || 0, t]);', "x.cal || 0, t, String(x.title || '')]);");
+// Like class length, time-of-day is a facet: ignore its own selection when
+// counting choices, while retaining all other active filters.
+replaceChallengeSource('const timed = RD.filter(', "const timed = RX('q').filter(");
+replaceChallengeSource("bar: selected ? C.TXT : C.SLATE, row: selected ? 'background: #FDF0F1'", "bar: selected ? C.TXT : (F.q ? C.FADE : C.SLATE), row: selected ? 'background: #EEF2F8; font-weight: 700'");
 replaceChallengeSource('badges: badges, generated:', 'badges: badges, activeChallenges: Array.isArray(j.active_challenges) ? j.active_challenges : null, generated:');
 const catalogueStart = source.indexOf('const ACTIVE_CHALLENGES = [');
 const catalogueEnd = source.indexOf('\n];', catalogueStart);
@@ -64,7 +68,7 @@ const challengeRowsEnd = source.indexOf('const chips = [];', challengeRowsStart)
 if (challengeRowsStart < 0 || challengeRowsEnd < 0) throw new Error('Challenge calculations were not found');
 source = source.slice(0, challengeRowsStart) + `const challengeNow = Date.now();
 const challengeRows = (ACTIVE_CHALLENGES || []).filter((c) => {
-  if (!c || !/^[0-9a-f]{32}$/.test(c.id) || c.status !== 'current' || c.completed) return false;
+  if (!c || !/^[0-9a-f]{32}$/.test(c.id) || c.joined !== true || c.status !== 'current' || c.completed) return false;
   if (c.start && !(Date.parse(c.start) <= challengeNow)) return false;
   if (c.end && !(Date.parse(c.end) > challengeNow)) return false;
   const tiers = Array.isArray(c.tiers) ? c.tiers : [];
@@ -81,7 +85,7 @@ const challengeRows = (ACTIVE_CHALLENGES || []).filter((c) => {
     tierText: tiers.map((t) => t.title + ': ' + t.display_value + ' ' + t.display_unit).join(' · '),
     pct: available && goal && goal.value > 0 ? Math.min(100, Math.round(100 * c.value / goal.value)) : 0 };
 });
-const challengeNotice = !Array.isArray(ACTIVE_CHALLENGES) ? 'Challenge catalogue unavailable. Update data to retry.' : challengeRows.length ? '' : 'No active incomplete challenges.';
+const challengeNotice = !Array.isArray(ACTIVE_CHALLENGES) ? 'Challenge catalogue unavailable. Update data to retry.' : challengeRows.length ? '' : 'No joined active incomplete challenges.';
 ` + source.slice(challengeRowsEnd);
 replaceChallengeSource('activeChallenges: challengeRows, ac: challengeRows,', 'activeChallenges: challengeRows, ac: challengeRows, challengeNotice: challengeNotice,');
 replaceChallengeSource('"activeChallenges",', '"challengeNotice", "activeChallenges",');
@@ -167,7 +171,7 @@ if (valueEnd < 0) throw new Error("Vue template terminator was not found");
 let template = JSON.parse(String.fromCharCode(34) + source.slice(valueStart, valueEnd) + String.fromCharCode(34));
 template = template.replace('Current monthly &amp; active challenges', 'Active challenges')
   .replace('Current monthly & active challenges', 'Active challenges')
-  .replace('Live challenge catalogue checked Nov 6, 2026 · open a challenge for your current progress.', 'Current challenges and credited progress from your latest Peloton update. Completed and expired challenges are hidden.')
+  .replace('Live challenge catalogue checked Nov 6, 2026 · open a challenge for your current progress.', 'Joined challenges and credited progress from your latest Peloton update. Completed and expired challenges are hidden.')
   .replace('<template v-for="(c, c_i) in activeChallenges"', '<p v-if="challengeNotice" role="status">{{challengeNotice}}</p><template v-for="(c, c_i) in activeChallenges"');
 
 // Put the compact 30-day activity card beside the daily heatmap, while keeping

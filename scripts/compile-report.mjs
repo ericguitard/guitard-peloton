@@ -212,6 +212,15 @@ formatSource('comp.state = Vue.reactive(comp.state);', `comp.state = Vue.reactiv
   document.addEventListener('visibilitychange', refreshActivityDay);`);
 
 
+// Match the discipline milestone sequence on Peloton's Achievements page.
+formatSource("const MDISC = ['Strength', 'Meditation', 'Cycling', 'Walking', 'Yoga', 'Stretching', 'Running', 'Bike Bootcamp', 'Cardio', 'Rowing', 'Tread Bootcamp', 'Row Bootcamp'];", "const MDISC = ['Cycling', 'Running', 'Walking', 'Rowing', 'Bike Bootcamp', 'Tread Bootcamp', 'Row Bootcamp', 'Strength', 'Stretching', 'Yoga', 'Meditation', 'Cardio'];");
+// Capitalize display headings without changing discipline names, data or keys.
+formatSource('const num = (v, p)', "const titleCaseHeading = (value) => String(value).replace(/\\b[a-z]/g, (letter) => letter.toUpperCase());\nconst num = (v, p)");
+formatSource('title: title,', 'title: titleCaseHeading(title),');
+formatSource('chartTitle: chartTitle,', 'chartTitle: titleCaseHeading(chartTitle),');
+formatSource("heatTitle: 'Daily heatmap'", "heatTitle: 'Daily Heatmap'");
+formatSource("recentTitle: inRange.length ? 'Earned in ' + rangeLabel : 'Most recent achievements'", "recentTitle: titleCaseHeading(inRange.length ? 'Earned in ' + rangeLabel : 'Most recent achievements')");
+
 // All-time totals keep their full range; each activity chart browses one year.
 const replaceYearSource = (from, to) => {
   if (!source.includes(from)) throw new Error('Calendar-year transform did not match: ' + from.slice(0, 80));
@@ -470,6 +479,13 @@ badgeSection = badgeSection.replace('<section', '<section data-year-chart')
   .replace('<div style="display: flex; flex-direction: column; gap: 18px; max-height: 760px; overflow-y: auto; padding-right: 4px">', '<div class="badge-year-body"><p v-if="!badgeGroups.length" role="status" class="badge-empty">No badges in this category for {{badgePageNav.year}}.</p><div class="badge-year-items" style="display: flex; flex-direction: column; gap: 18px; max-height: 760px; overflow-y: auto; padding-right: 4px">');
 badgeSection += '</div>';
 template = template.slice(0, badgeSectionStart) + badgeSection + template.slice(badgeSectionEnd);
+
+// Apply heading casing only after the structural transforms that locate the
+// original headings. Leave Vue expressions and nested markup intact.
+template = template.replace('>Discipline milestones<', '>Milestones<');
+template = template.replace(/(<h[1-6]\b[^>]*>)([\s\S]*?)(<\/h[1-6]>)/g, (_, open, body, close) =>
+  open + body.replace(/(\{\{[\s\S]*?\}\}|<[^>]*>)|([^<{]+)/g, (part, markup, text) =>
+    markup || text.replace(/\b[a-z]/g, (letter) => letter.toUpperCase())) + close);
 
 const compiled = compile(template, { mode: "function", prefixIdentifiers: false });
 const render = "(function(){" + compiled.code + "})()";

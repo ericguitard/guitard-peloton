@@ -50,6 +50,10 @@ class PelotonError(Exception):
     pass
 
 
+class PelotonAuthError(PelotonError):
+    pass
+
+
 class Peloton:
     def __init__(self, token: str):
         self.s = requests.Session()
@@ -64,7 +68,7 @@ class Peloton:
         for attempt in range(tries):
             r = self.s.get(API + path, params=params, timeout=60)
             if r.status_code == 401:
-                raise PelotonError("Peloton rejected the token (401). Paste a fresh Bearer token into peloton_token.txt or the PELOTON_TOKEN secret.")
+                raise PelotonAuthError("Peloton rejected the token (401). Renew the PELOTON_TOKEN GitHub Actions secret.")
             if r.status_code in (429, 500, 502, 503, 504):
                 wait = 5 * (attempt + 1)
                 log.info(f"{r.status_code} on {path}; retrying in {wait}s")
@@ -305,5 +309,10 @@ if __name__ == "__main__":
     try:
         main()
     except (PelotonError, requests.RequestException) as e:
+        output_file = os.environ.get("GITHUB_OUTPUT")
+        if output_file:
+            code = "peloton_auth_required" if isinstance(e, PelotonAuthError) else "peloton_fetch_failed"
+            with open(output_file, "a", encoding="utf-8") as output:
+                output.write(f"error_code={code}\n")
         log.error(str(e))
         sys.exit(1)

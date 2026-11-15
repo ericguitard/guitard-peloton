@@ -48,6 +48,34 @@ for (const [from, to] of transforms) {
   if (!source.includes(from)) throw new Error(`Report transform did not match: ${from.slice(0, 80)}`);
   source = source.replace(from, to);
 }
+// Badge years come from the whole catalogue so changing earned status cannot
+// change the year or its navigation limits. Preserve an existing saved page.
+const replaceBadgeSource = (from, to) => {
+  if (!source.includes(from)) throw new Error('Badge year transform did not match: ' + from.slice(0, 80));
+  source = source.replace(from, to);
+};
+replaceBadgeSource('badgePage: this.state.badgePage,', 'badgePage: this.state.badgePage, badgeYear: this.state.badgeYear,');
+replaceBadgeSource('badgePage: Number(uiSaved.badgePage) || 1,', 'badgePage: Number(uiSaved.badgePage) || 1, badgeYear: uiSaved.badgeYear,');
+const badgeLogicStart = source.indexOf('const bv = st.badgeView, bEarned');
+const badgeLogicEnd = source.indexOf('const groups = [];', badgeLogicStart);
+if (badgeLogicStart < 0 || badgeLogicEnd < 0) throw new Error('Badge year logic was not found');
+source = source.slice(0, badgeLogicStart) + `const bv = st.badgeView;
+const badgeYears = [...new Set(BADGES.map((b) => String(b.y)))].sort((a, b) => Number(b) - Number(a));
+const badgeTotalPages = Math.max(1, badgeYears.length);
+const savedBadgePage = Math.min(Math.max(1, Number(st.badgePage) || 1), badgeTotalPages);
+const badgeYear = badgeYears.includes(String(st.badgeYear)) ? String(st.badgeYear) : (badgeYears[savedBadgePage - 1] || String(new Date().getFullYear()));
+const badgePage = Math.max(0, badgeYears.indexOf(badgeYear)) + 1;
+const yearBadges = BADGES.filter((b) => String(b.y) === badgeYear);
+const bEarned = yearBadges.filter((b) => b.e).length;
+const shown = yearBadges.filter((b) => bv === 'all' || (bv === 'missing' ? !b.e : b.e));
+const pageShown = shown;
+` + source.slice(badgeLogicEnd);
+replaceBadgeSource('badgeView: id, badgePage: 1', 'badgeView: id, badgeYear: badgeYear');
+replaceBadgeSource("badgePageNav: { page: badgePage, year: badgeYear, total: badgeTotalPages, prev: () => this.setState({ badgePage: Math.max(1, badgePage - 1) }), next: () => this.setState({ badgePage: Math.min(badgeTotalPages, badgePage + 1) }), canPrev: badgePage > 1, canNext: badgePage < badgeTotalPages }", "badgePageNav: { page: badgePage, year: badgeYear, total: badgeTotalPages, prev: () => this.setState({ badgeYear: badgeYears[Math.min(badgeTotalPages - 1, badgePage)] || badgeYear }), next: () => this.setState({ badgeYear: badgeYears[Math.max(0, badgePage - 2)] || badgeYear }), canPrev: badgePage < badgeTotalPages, canNext: badgePage > 1 }");
+replaceBadgeSource("(BADGES.length - bEarned)", "(yearBadges.length - bEarned)");
+replaceBadgeSource("'All (' + BADGES.length", "'All (' + yearBadges.length");
+replaceBadgeSource('bTotal: String(BADGES.length), bPct: Math.round(100 * bEarned / BADGES.length)', 'bTotal: String(yearBadges.length), bPct: yearBadges.length ? Math.round(100 * bEarned / yearBadges.length) : 0');
+
 // All-time totals keep their full range; each activity chart browses one year.
 const replaceYearSource = (from, to) => {
   if (!source.includes(from)) throw new Error('Calendar-year transform did not match: ' + from.slice(0, 80));
@@ -283,6 +311,20 @@ for (const [heading, kind, label] of [['chartTitle', 'Monthly', 'minutes per mon
 // controls visibility. Keep styles external for the report's existing CSP.
 template += '<a class="circle-control back-to-top" href="#report-top" aria-label="Back to top" title="Back to top">↑</a>';
 
+const badgeHeading = 'Special event badges · {{bEarned}} of {{bTotal}} earned';
+const badgeHeadingIndex = template.indexOf(badgeHeading);
+const badgeSectionStart = template.lastIndexOf('<section', badgeHeadingIndex);
+const badgeSectionEnd = template.indexOf('</section>', badgeHeadingIndex);
+if (badgeHeadingIndex < 0 || badgeSectionStart < 0 || badgeSectionEnd < 0) throw new Error('Special event badge section was not found');
+let badgeSection = template.slice(badgeSectionStart, badgeSectionEnd);
+const badgePagerStart = badgeSection.indexOf('<div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 4px">');
+if (badgePagerStart < 0) throw new Error('Special event badge pager was not found');
+badgeSection = badgeSection.slice(0, badgePagerStart) + `<div class="chart-year-nav" role="group" aria-label="Special event badges year"><button class="circle-control chart-year-arrow chart-year-prev" type="button" @click="badgePageNav.prev" :disabled="!badgePageNav.canPrev" aria-label="Previous year for special event badges" title="Previous year">←</button><span class="chart-year-status" aria-live="polite">{{badgePageNav.year}}</span><button class="circle-control chart-year-arrow chart-year-next" type="button" @click="badgePageNav.next" :disabled="!badgePageNav.canNext" aria-label="Next year for special event badges" title="Next year">→</button></div>`;
+badgeSection = badgeSection.replace('<section', '<section data-year-chart')
+  .replace(badgeHeading, 'Special event badges · {{badgePageNav.year}} · {{bEarned}} of {{bTotal}} earned')
+  .replace('<div style="display: flex; flex-direction: column; gap: 18px; max-height: 760px; overflow-y: auto; padding-right: 4px">', '<p v-if="!badgeGroups.length" role="status" class="badge-empty">No badges in this category for {{badgePageNav.year}}.</p><div class="badge-year-items" style="display: flex; flex-direction: column; gap: 18px; max-height: 760px; overflow-y: auto; padding-right: 4px">');
+template = template.slice(0, badgeSectionStart) + badgeSection + template.slice(badgeSectionEnd);
+
 const compiled = compile(template, { mode: "function", prefixIdentifiers: false });
 const render = "(function(){" + compiled.code + "})()";
 const result = source.slice(0, start) + "    render: " + render + source.slice(valueEnd + 1);
@@ -316,6 +358,7 @@ if (!styleMatch) throw new Error("Report stylesheet was not found");
 const cssPath = path.join(outputDir, "report.css");
 const controlStyles = `
 html{scroll-behavior:smooth}
+.badge-year-items{padding-left:40px;padding-right:40px!important;min-height:100px}.badge-empty{min-height:100px;margin:0;padding:20px 40px;color:#5B6069;font-size:14px}
 [data-year-chart]{position:relative}
 .circle-control{width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1px solid #C9CDD3;border-radius:50%;background:#FFFFFF;color:#181A1D;box-shadow:0 2px 8px #181a1d26;font:inherit;font-size:24px;text-decoration:none;cursor:pointer;transition:opacity .15s,background .15s,box-shadow .15s}
 .circle-control:hover{background:#F4F5F7;box-shadow:0 3px 12px #181a1d38}

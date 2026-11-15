@@ -243,6 +243,7 @@ def fetch_all():
     # Use the same credited progress as Peloton's challenge page, never a guess
     # from class titles. Do not export participant or account details.
     challenge_progress = {}
+    annual_progress = {}
     active_challenges = None
     try:
         catalogue = p.get(
@@ -258,6 +259,12 @@ def fetch_all():
             if not isinstance(cid, str) or not re.fullmatch(r"[0-9a-f]{32}", cid) or cid in seen:
                 continue
             seen.add(cid)
+            annual_year = re.fullmatch(r"The Annual (\d{4})", str(summary.get("title", "")))
+            progress = item.get("progress") or {}
+            annual_value = challenge_field(progress, "metric_value", "metricValue")
+            if annual_year and challenge_number(annual_value) and challenge_field(progress, "has_joined", "hasJoined") is True:
+                # Keep credited Annual minutes even after its completed card is hidden.
+                annual_progress[annual_year.group(1)] = annual_value
             # Details supply all reward tiers, including goals beyond the next badge.
             details = p.get(f"/api/user/{uid}/challenge/{cid}")
             challenge = parse_active_challenge(details)
@@ -278,6 +285,7 @@ def fetch_all():
                     "current_daily": streaks.get("current_daily")},
         "peloton_counts": counts,
         "challenge_progress": challenge_progress,
+        "annual_progress": annual_progress,
         "active_challenges": active_challenges,
     }
 

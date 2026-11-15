@@ -23,7 +23,7 @@ GitHub Actions
 Requires: Python 3.9+ and `pip install requests`
 Peloton does not publish this API and can change it at any time; use it only for your own data.
 """
-import argparse, csv, io, json, os, re, sys, time, logging
+import argparse, csv, io, json, os, re, sys, time, logging, math
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -122,6 +122,20 @@ def parse_csv(text):
 FIELDS = ["date", "time", "disc", "inst", "type", "title", "live", "len", "out", "dist", "spd", "hr", "cal"]
 
 
+def parse_challenge_progress(payload):
+    """Export only challenge IDs and the credited metric used by Peloton's UI."""
+    result = {}
+    for item in payload.get("challenges", []):
+        summary, progress = item.get("challengeSummary", {}), item.get("progress", {})
+        challenge_id = summary.get("id", "")
+        value = progress.get("metricValue")
+        if (isinstance(challenge_id, str) and re.fullmatch(r"[0-9a-f]{32}", challenge_id)
+                and isinstance(value, (int, float)) and not isinstance(value, bool)
+                and math.isfinite(value) and value >= 0):
+            result[challenge_id] = {"value": value}
+    return result
+
+
 def fetch_all():
     """Return {source, username, generated, fields, rows, badges, streaks, peloton_counts}."""
     token = os.environ.get("PELOTON_TOKEN", "").strip()
@@ -161,6 +175,19 @@ def fetch_all():
     streaks = ov.get("streaks", {}) or {}
     counts = {w.get("name"): w.get("count") for w in (ov.get("workout_counts", {}) or {}).get("workouts", [])}
 
+    # Reps and collection-specific challenges cannot be reconstructed from CSV.
+    # Use the same credited progress as Peloton's challenge page, never a guess
+    # from class titles. Do not export participant or account details.
+    challenge_progress = {}
+    try:
+        challenge_progress = parse_challenge_progress(p.get(
+            f"/api/user/{uid}/challenges/current",
+            params={"has_joined": "false", "_": int(time.time())},
+        ))
+        log.info("Challenge progress: %d totals", len(challenge_progress))
+    except (requests.RequestException, PelotonError, TypeError, ValueError, AttributeError):
+        log.warning("Challenge progress unavailable; workout history is still updated")
+
     return {
         "source": "peloton-api", "username": username,
         "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -169,6 +196,7 @@ def fetch_all():
         "streaks": {"current_weekly": streaks.get("current_weekly"), "best_weekly": streaks.get("best_weekly"),
                     "current_daily": streaks.get("current_daily")},
         "peloton_counts": counts,
+        "challenge_progress": challenge_progress,
     }
 
 

@@ -48,6 +48,26 @@ for (const [from, to] of transforms) {
   if (!source.includes(from)) throw new Error(`Report transform did not match: ${from.slice(0, 80)}`);
   source = source.replace(from, to);
 }
+// Challenge-specific credited totals are separate from the compact workout
+// records: slot 10 is start time, not the title or a repetition count.
+const replaceChallengeSource = (from, to) => {
+  if (!source.includes(from)) throw new Error('Challenge transform did not match: ' + from.slice(0, 80));
+  source = source.replace(from, to);
+};
+replaceChallengeSource('x.cal || 0, t]);', "x.cal || 0, t, String(x.title || '')]);");
+replaceChallengeSource('badges: badges, generated:', 'badges: badges, challengeProgress: j.challenge_progress || {}, generated:');
+replaceChallengeSource("if (n.includes('annual')) current", `const challengeId = c.u.split('/').pop();
+  const credited = st.loaded && st.loaded.challengeProgress && st.loaded.challengeProgress[challengeId];
+  const requiresCreditedProgress = n.includes('rep goal') || n.includes('turkey burn');
+  if (requiresCreditedProgress) {
+    available = !!credited && typeof credited.value === 'number' && Number.isFinite(credited.value) && credited.value >= 0;
+    if (available) current = credited.value;
+  }
+  else if (n.includes('annual')) current`);
+replaceChallengeSource("/pilates/i.test(r[10] || '')", "/pilates/i.test(r[11] || '')");
+replaceChallengeSource("else if (n.includes('turkey burn')) current = monthRows.filter((r) => /turkey burn/i.test(r[10] || '')).length;", '');
+replaceChallengeSource("status: 'Current: ' + value + ' ' + unit + ' · Gold: ' + gold", "status: available ? 'Current: ' + value + ' ' + unit + ' · Gold: ' + gold : 'Progress unavailable · Update data to retry'");
+
 // Badge years come from the whole catalogue so changing earned status cannot
 // change the year or its navigation limits. Preserve an existing saved page.
 const replaceBadgeSource = (from, to) => {

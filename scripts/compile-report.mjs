@@ -58,7 +58,7 @@ replaceChallengeSource('x.cal || 0, t]);', "x.cal || 0, t, String(x.title || '')
 // counting choices, while retaining all other active filters.
 replaceChallengeSource('const timed = RD.filter(', "const timed = RX('q').filter(");
 replaceChallengeSource("bar: selected ? C.TXT : C.SLATE, row: selected ? 'background: #FDF0F1'", "bar: selected ? C.TXT : (F.q ? C.FADE : C.SLATE), row: selected ? 'background: #EEF2F8; font-weight: 700'");
-replaceChallengeSource('badges: badges, generated:', 'badges: badges, activeChallenges: Array.isArray(j.active_challenges) ? j.active_challenges : null, generated:');
+replaceChallengeSource('badges: badges, generated:', 'badges: badges, activeChallenges: Array.isArray(j.active_challenges) ? j.active_challenges : null, annualProgress: j.annual_progress || {}, generated:');
 const catalogueStart = source.indexOf('const ACTIVE_CHALLENGES = [');
 const catalogueEnd = source.indexOf('\n];', catalogueStart);
 if (catalogueStart < 0 || catalogueEnd < 0) throw new Error('Fixed challenge catalogue was not found');
@@ -78,11 +78,11 @@ const challengeRows = (ACTIVE_CHALLENGES || []).filter((c) => {
   const tiers = Array.isArray(c.tiers) ? c.tiers : [];
   const goal = tiers[tiers.length - 1];
   const available = typeof c.value === 'number' && Number.isFinite(c.value) && c.value >= 0;
-  const shownValue = c.display_value == null ? (available ? num(c.value) : '') : c.display_value;
-  const goalText = goal ? goal.title + ': ' + goal.display_value + ' ' + goal.display_unit : '';
+  const shownValue = c.display_value == null ? (available ? formatMetric(c.value) : '') : formatMetric(c.display_value);
+  const goalText = goal ? goal.title + ': ' + formatMetric(goal.display_value) + ' ' + goal.display_unit : '';
   return { n: c.title, d: c.description, u: 'https://members.onepeloton.com/en-CA/challenges/active/' + c.id,
     status: available ? 'Current: ' + shownValue + ' ' + c.display_unit + (goalText ? ' · ' + goalText : '') : 'Progress unavailable · Update data to retry',
-    tierText: tiers.map((t) => t.title + ': ' + t.display_value + ' ' + t.display_unit).join(' · '),
+    tierText: tiers.map((t) => t.title + ': ' + formatMetric(t.display_value) + ' ' + t.display_unit).join(' · '),
     pct: available && goal && goal.value > 0 ? Math.min(100, Math.round(100 * c.value / goal.value)) : 0 };
 });
 const challengeNotice = !Array.isArray(ACTIVE_CHALLENGES) ? 'Challenge catalogue unavailable. Update data to retry.' : challengeRows.length ? '' : 'No joined active incomplete challenges.';
@@ -117,6 +117,52 @@ replaceBadgeSource("badgePageNav: { page: badgePage, year: badgeYear, total: bad
 replaceBadgeSource("(BADGES.length - bEarned)", "(yearBadges.length - bEarned)");
 replaceBadgeSource("'All (' + BADGES.length", "'All (' + yearBadges.length");
 replaceBadgeSource('bTotal: String(BADGES.length), bPct: Math.round(100 * bEarned / BADGES.length)', 'bTotal: String(yearBadges.length), bPct: yearBadges.length ? Math.round(100 * bEarned / yearBadges.length) : 0');
+
+// Format displayed quantities only; years, dates, IDs and chart coordinates
+// remain unchanged. Numeric API display values use the same grouping rule.
+const formatSource = (from, to) => {
+  if (!source.includes(from)) throw new Error('Number format transform did not match: ' + from.slice(0, 80));
+  source = source.replaceAll(from, to);
+};
+formatSource("const hm = (m) => Math.floor(m / 60) + 'h '", "const hm = (m) => num(Math.floor(m / 60)) + 'h '");
+formatSource("return mm + ':'", "return num(mm) + ':'");
+formatSource("avgLabel = avgMins ? Math.round(avgMins) + ' min avg' : '';", "avgLabel = avgMins ? num(Math.round(avgMins)) + ' min' : '';");
+formatSource(": t + ' ' + nn[1];", ": num(t) + ' ' + nn[1];");
+formatSource("r[4] + ' min'", "num(r[4]) + ' min'");
+formatSource("len: String(r[4])", "len: num(r[4])");
+formatSource("len: L + ' min'", "len: num(L) + ' min'");
+formatSource("b.times + (b.times === 1", "num(b.times) + (b.times === 1");
+formatSource("'Earned ' + b.e + ' times'", "'Earned ' + num(b.e) + ' times'");
+formatSource("g.items.length + (g.items.length === 1", "num(g.items.length) + (g.items.length === 1");
+formatSource("'Earned (' + bEarned", "'Earned (' + num(bEarned)");
+formatSource("'Not earned (' + (yearBadges.length - bEarned)", "'Not earned (' + num(yearBadges.length - bEarned)");
+formatSource("'All (' + yearBadges.length", "'All (' + num(yearBadges.length)");
+formatSource('bEarned: String(bEarned), bTotal: String(yearBadges.length)', 'bEarned: num(bEarned), bTotal: num(yearBadges.length)');
+formatSource("dSel.length + ' selected'", "num(dSel.length) + ' selected'");
+formatSource("iSel.length + ' selected'", "num(iSel.length) + ' selected'");
+formatSource("instAll.length + ')'", "num(instAll.length) + ')'");
+formatSource('act30: String(act30)', 'act30: num(act30)');
+formatSource("+ Math.abs(delta) +", "+ num(Math.abs(delta)) +");
+formatSource("const hm = (m)", String.raw`const formatMetric = (value) => {
+  const raw = String(value ?? '').trim().replace(/,/g, '');
+  const number = /^[+-]?\d+(?:\.\d+)?$/.test(raw) ? Number(raw) : NaN;
+  return Number.isFinite(number) ? number.toLocaleString('en-CA', { maximumFractionDigits: 20 }) : String(value ?? '');
+};
+const hm = (m)`);
+formatSource('const yMin = sum(yRows, 4);', `const annualMinutes = (year, fallback) => {
+  const credited = this.state.loaded && this.state.loaded.annualProgress && this.state.loaded.annualProgress[String(year)];
+  const card = (ACTIVE_CHALLENGES || []).find((c) => c.title === 'The Annual ' + year);
+  const value = typeof credited === 'number' ? credited : card && card.value;
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
+};
+const yMin = annualMinutes(annY, sum(yRows, 4));
+const annualGoalReached = yMin >= GOAL;`);
+formatSource('if (t >= GOAL) { doneAt', 'if (annualGoalReached && t >= GOAL) { doneAt');
+formatSource('const m = sum(W.filter((r) => yearOf(r[0]) === y && r[0] <= eff), 4); annualYears.push', 'const m = annualMinutes(y, sum(W.filter((r) => yearOf(r[0]) === y && r[0] <= eff), 4)); annualYears.push');
+formatSource("pctTxt: Math.round(100 * yMin / GOAL) + '%'", "pctTxt: num(Math.round(100 * yMin / GOAL)) + '%'");
+formatSource("paceTxt: doneAt !== null ? 'Earned on ' + fd(doneAt)", "paceTxt: annualGoalReached ? (doneAt !== null ? 'Earned on ' + fd(doneAt) : 'Goal reached')");
+formatSource("needTxt: doneAt !== null ? 'Goal reached'", "needTxt: annualGoalReached ? 'Goal reached'");
+formatSource('(gap >= 0 || doneAt !== null)', '(gap >= 0 || annualGoalReached)');
 
 // All-time totals keep their full range; each activity chart browses one year.
 const replaceYearSource = (from, to) => {
